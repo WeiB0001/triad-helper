@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>九宮幻卡 · 對局輔助盤</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Oswald:wght@500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b1017; --p1:#121b26; --p2:#18232f; --p3:#22303f; --line:#2b3a4c;
+  --ink:#e9eef5; --dim:#8ea0b6; --dim2:#63758c;
+  --gold:#d9b45a; --gold-d:#8a6f2a;
+  --blue:#3d8ef0; --blue-bg:#12335c; --blue-ln:#2f6fc4;
+  --red:#e4614a; --red-bg:#4a1c15; --red-ln:#b04030;
+  --ok:#57b06e;
+  --r:8px; --rs:5px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:"Noto Sans TC",system-ui,-apple-system,"Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.6;padding-bottom:40px}
+h1,h2,h3,.disp{font-family:Cinzel,"Noto Sans TC",serif;letter-spacing:.03em;margin:0}
+.num{font-family:Oswald,sans-serif;font-variant-numeric:tabular-nums}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#2b3a4c;border-radius:4px}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:40;background:rgba(11,16,23,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1080px;margin:0 auto;padding:10px 14px;display:flex;align-items:center;gap:12px}
+.logo{display:flex;align-items:center;gap:9px}
+.logo .mk{width:24px;height:24px;display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px}
+.logo .mk i{background:#243141;border-radius:1px}
+.logo .mk i:nth-child(5){background:var(--gold)}
+.logo b{font-family:Cinzel,serif;font-size:15px;font-weight:600}
+.tabs{margin-left:auto;display:flex;gap:2px;overflow-x:auto}
+.tabs button{padding:7px 13px;border-radius:999px;color:var(--dim);font-weight:500;white-space:nowrap}
+.tabs button.on{background:var(--p3);color:var(--gold)}
+.wrap{max-width:1080px;margin:0 auto;padding:16px 14px}
+.panel{display:none}.panel.on{display:block}
+
+/* blocks */
+.blk{background:var(--p1);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.blk>h3{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grow{flex:1 1 160px}
+.fld{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--dim)}
+input[type=text],input[type=number],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:var(--rs);padding:8px 10px}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.btn{background:var(--p3);border:1px solid var(--line);border-radius:var(--rs);padding:9px 15px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--gold);color:var(--gold)}
+.btn:disabled{opacity:.35;pointer-events:none}
+.btn.go{background:linear-gradient(180deg,#6b5620,#3f3213);border-color:var(--gold);color:#ffe9ae;font-size:15px;padding:12px 22px}
+.btn.sm{padding:6px 11px;font-size:12px}
+.btn.on{background:var(--gold);color:#20180a;border-color:var(--gold)}
+.dim{color:var(--dim)}.hint{font-size:12px;color:var(--dim2);margin:6px 0 0}
+.tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:11px;color:var(--dim)}
+.tag.g{border-color:var(--gold-d);color:var(--gold)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{padding:7px 16px;color:var(--dim);font-size:13px}
+.seg button.on{background:var(--p3);color:var(--gold)}
+hr.sep{border:none;border-top:1px solid var(--line);margin:12px 0}
+
+/* card face */
+.tt{position:relative;width:82px;height:104px;border-radius:var(--rs);flex:0 0 auto;user-select:none;
+  background:linear-gradient(165deg,#2a3849,#18222e);border:1px solid #33445a}
+.tt.mine{background:linear-gradient(165deg,#1e4c85,var(--blue-bg));border-color:var(--blue-ln);box-shadow:0 0 0 1px rgba(61,142,240,.25)}
+.tt.opp{background:linear-gradient(165deg,#7a2c20,var(--red-bg));border-color:var(--red-ln);box-shadow:0 0 0 1px rgba(228,97,74,.25)}
+.tt .v{position:absolute;font-family:Oswald,sans-serif;font-size:15px;font-weight:600;line-height:1;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.tt .v.u{top:7px;left:50%;transform:translateX(-50%)}
+.tt .v.d{bottom:22px;left:50%;transform:translateX(-50%)}
+.tt .v.l{left:9px;top:42%}
+.tt .v.r{right:9px;top:42%}
+.tt .v.up{color:#9de8b0}.tt .v.dn{color:#ffb3a3}
+.tt .nm{position:absolute;bottom:3px;left:0;right:0;text-align:center;font-size:9.5px;line-height:1.15;padding:0 3px;color:#b7c5d6;max-height:2.3em;overflow:hidden}
+.tt .ty{position:absolute;top:5px;left:6px;font-size:8.5px;color:var(--gold)}
+.tt .st{position:absolute;top:5px;right:6px;font-size:8.5px;color:var(--gold)}
+.tt.tap{cursor:pointer;transition:transform .1s}
+.tt.tap:hover{transform:translateY(-3px);border-color:var(--gold)}
+.tt.sel{outline:2px solid var(--gold);outline-offset:2px;transform:translateY(-4px)}
+.tt.add{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;border:1px dashed #3a4b60;background:#101823;color:var(--dim2);font-size:11px;cursor:pointer}
+.tt.add:hover{border-color:var(--gold);color:var(--gold)}
+.tt.s{width:62px;height:79px}
+.tt.s .v{font-size:12px}.tt.s .v.d{bottom:17px}.tt.s .nm{font-size:8px}
+.tt.s .ty,.tt.s .st{font-size:7.5px}
+.rail{display:flex;gap:6px;flex-wrap:wrap;min-height:80px;align-items:flex-start}
+.rail.scroll{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}
+
+/* board */
+.stage{display:grid;grid-template-columns:minmax(0,auto) minmax(240px,1fr);gap:18px;align-items:start}
+@media(max-width:800px){.stage{grid-template-columns:1fr}}
+.board{display:grid;grid-template-columns:repeat(3,92px);grid-auto-rows:116px;gap:6px;padding:8px;
+  background:radial-gradient(120% 120% at 50% 0%,#16202c,#0a0f15);border:1px solid var(--line);border-radius:var(--r)}
+.cell{position:relative;border-radius:var(--rs);display:flex;align-items:center;justify-content:center}
+.cell .tt{width:92px;height:116px}
+.cell.free{border:1px dashed #2b3a4c;background:#0d141c}
+.cell.free.arm{cursor:pointer;border-color:var(--gold);background:#141d27}
+.cell.free.arm:hover{background:#1a2530}
+.cell .n{font-family:Oswald;font-size:24px;color:#1d2836}
+.cell .badge{position:absolute;top:4px;left:4px;background:var(--ok);color:#08170c;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;font-family:Oswald}
+.cell.hint1{border-color:var(--ok);box-shadow:inset 0 0 22px rgba(87,176,110,.35)}
+.cell.hint2{border-color:rgba(87,176,110,.5)}
+.cell.hint3{border-color:rgba(87,176,110,.28)}
+.cell.justplaced .tt{animation:pop .35s ease}
+@keyframes pop{from{transform:scale(.86);opacity:.4}to{transform:scale(1);opacity:1}}
+
+.score{display:flex;align-items:center;gap:8px;font-family:Oswald;font-size:24px;margin-left:auto}
+.score .a{color:var(--blue)}.score .b{color:var(--red)}
+.bar10{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--red);margin-top:6px}
+.bar10 i{background:var(--blue)}
+.status{border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:var(--rs);padding:10px 12px;background:var(--p2);margin:10px 0}
+.status.me{border-left-color:var(--blue)}.status.op{border-left-color:var(--red)}
+.status b{font-size:14px}
+.status .sub{font-size:12px;color:var(--dim);margin-top:2px}
+.advs{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:5px}
+.advs li{display:flex;gap:9px;align-items:center;border:1px solid var(--line);border-radius:var(--rs);padding:7px 10px;background:var(--p2);font-size:13px;cursor:pointer}
+.advs li:hover{border-color:var(--gold)}
+.advs li .k{font-family:Oswald;color:var(--gold);width:16px}
+.advs li .e{margin-left:auto;font-family:Oswald;font-size:15px}
+
+/* deck cards */
+.grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.dk{border:1px solid var(--line);border-radius:var(--r);padding:11px;background:var(--p2)}
+.dk.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold-d)}
+.dk h4{margin:0 0 8px;font-size:13px;display:flex;gap:8px;align-items:center}
+.dk h4 input{flex:1;min-width:0;padding:5px 8px}
+.mini{width:40px;height:52px;border-radius:3px;position:relative;background:#111a24;border:1px solid #2a3746}
+.mini.f{background:linear-gradient(165deg,#1e4c85,#12335c);border-color:var(--blue-ln)}
+.mini span{position:absolute;font-family:Oswald;font-size:9px}
+.mini .u{top:2px;left:50%;transform:translateX(-50%)}.mini .d{bottom:2px;left:50%;transform:translateX(-50%)}
+.mini .l{left:3px;top:20px}.mini .r{right:3px;top:20px}
+
+/* npc list */
+.nplist{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--p2)}
+.nprow{display:flex;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid #1e2937;cursor:pointer}
+.nprow:last-child{border-bottom:none}
+.nprow:hover{background:var(--p3)}
+.nprow.on{background:#243448;box-shadow:inset 3px 0 0 var(--gold)}
+.nprow .l1{font-weight:500}.nprow .l2{font-size:11px;color:var(--dim2)}
+.nprow .rt{margin-left:auto;display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;max-width:45%}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(4,7,11,.8);display:none;align-items:center;justify-content:center;z-index:80;padding:12px}
+.scrim.on{display:flex}
+.modal{background:var(--p1);border:1px solid var(--gold-d);border-radius:var(--r);max-width:720px;width:100%;max-height:90vh;overflow:auto;padding:16px}
+.modal h3{font-size:15px;color:var(--gold);margin-bottom:8px}
+.pickgrid{display:flex;flex-wrap:wrap;gap:6px;max-height:38vh;overflow:auto;padding:6px;border:1px solid var(--line);border-radius:var(--rs);background:#0d141c}
+.vrow{display:flex;gap:4px;align-items:center;margin:5px 0}
+.vrow>b{width:20px;flex:0 0 20px;color:var(--gold);font-size:12px;text-align:center}
+.chip{width:32px;height:32px;flex:0 0 auto;border:1px solid var(--line);border-radius:5px;background:#0f1720;font-family:Oswald;font-size:16px;color:var(--ink)}
+.vrow .chip{flex:1 1 24px;min-width:24px;width:auto;height:34px}
+.chip:hover{border-color:var(--gold)}
+.chip.on{background:var(--gold);color:#20180a;border-color:var(--gold);font-weight:600}
+/* 十字填值盤：位置＝卡片上下左右 */
+.cross{display:grid;grid-template-areas:". t ." "l m r" ". b .";justify-content:center;
+  justify-items:center;align-items:center;gap:10px;margin:4px auto}
+.cross .t{grid-area:t}.cross .l{grid-area:l}.cross .m{grid-area:m}.cross .r{grid-area:r}.cross .b{grid-area:b}
+.cblk{display:flex;flex-direction:column;align-items:center;gap:4px}
+.cblk>span{font-size:11px;color:var(--gold);letter-spacing:.1em}
+.cgrid{display:grid;gap:4px}
+.cross .t .cgrid,.cross .b .cgrid{grid-template-columns:repeat(5,32px)}
+.cross .l .cgrid,.cross .r .cgrid{grid-template-columns:repeat(2,32px)}
+.cross .m .tt{width:104px;height:132px}
+.cross .m .tt .v{font-size:18px}
+@media(max-width:400px){.cross{gap:6px}.chip{width:28px;height:28px;font-size:14px}
+  .cross .t .cgrid,.cross .b .cgrid{grid-template-columns:repeat(5,28px)}
+  .cross .l .cgrid,.cross .r .cgrid{grid-template-columns:repeat(2,28px)}
+  .cross .m .tt{width:88px;height:112px}}
+.rank{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:6px}
+.rank li{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:var(--rs);background:var(--p2);padding:8px 11px;cursor:pointer;font-size:13px}
+.rank li:hover{border-color:var(--gold)}
+.rank li.top{border-color:var(--ok);box-shadow:inset 0 0 18px rgba(87,176,110,.16)}
+.rank li .k{font-family:Oswald;color:var(--gold);width:16px}
+.rank li .p{margin-left:auto;font-family:Oswald;font-size:16px}
+.rules{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.rules label{display:flex;gap:7px;align-items:flex-start;border:1px solid var(--line);border-radius:var(--rs);padding:7px 9px;background:#0f1720;font-size:12px;cursor:pointer}
+.rules label.on{border-color:var(--gold);background:#1b1a10}
+.rules small{display:block;color:var(--dim2);font-size:10px;line-height:1.3}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--p3);border:1px solid var(--gold);padding:9px 18px;border-radius:999px;z-index:90;opacity:0;transition:opacity .2s;pointer-events:none;font-size:13px}
+.toast.on{opacity:1}
+@media(max-width:520px){
+  .board{grid-template-columns:repeat(3,30vw);grid-auto-rows:38vw}
+  .cell .tt{width:30vw;height:38vw}
+  .tt{width:74px;height:94px}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="top"><div class="top-in">
+  <div class="logo"><div class="mk"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><b>九宮幻卡輔助盤</b></div>
+  <nav class="tabs" id="tabs">
+    <button data-t="play" class="on">對戰</button>
+    <button data-t="decks">排組</button>
+    <button data-t="npcs">NPC</button>
+    <button data-t="lib">卡牌</button>
+    <button data-t="help">說明</button>
+  </nav>
+</div></div>
+<div class="wrap">
+  <section class="panel on" id="p-play"></section>
+  <section class="panel" id="p-decks"></section>
+  <section class="panel" id="p-npcs"></section>
+  <section class="panel" id="p-lib"></section>
+  <section class="panel" id="p-help"></section>
+  <section class="panel" id="p-battle"></section>
+</div>
+<div class="scrim" id="scrim"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ===================== 資料 ===================== */
+/* 數值順序 v = [上, 下, 左, 右]  ·  t: 0無 1獸人 2蠻神 3拂曉 4帝國 */
+const TYPES = ['—','獸人','蠻神','拂曉','帝國'];
+const BASE_CARDS = [
+[101,'渡渡鳥',4,3,4,2,0,1],[102,'冬貝利',2,7,2,2,0,1],[103,'仙人刺',4,3,3,3,0,1],
+[104,'魔石精',2,4,4,3,0,1],[105,'軟糊怪',2,3,5,4,0,1],[106,'爆彈怪',3,3,3,4,0,1],
+[107,'蔓德拉',4,5,3,2,0,1],[108,'礦爬蟲',3,3,4,3,0,1],[109,'魔界花',5,5,2,2,0,1],
+[110,'長鬚豹',2,2,5,5,0,1],[111,'冥鬼之眼',5,2,2,5,0,1],[112,'古菩猩猩',2,5,2,5,0,1],
+[113,'陸行鳥',3,2,1,7,0,1],[114,'蜥蜴人',1,7,1,4,1,1],[115,'鳥人',6,3,4,1,1,1],
+[116,'壞妖精',2,5,4,4,1,1],[117,'地靈',2,4,6,2,1,1],[118,'魚人',4,3,3,5,1,1],
+[119,'塔塔露·塔露',7,3,2,2,3,1],[120,'莫古力',2,3,7,1,1,1],[121,'塞壬',3,7,2,6,0,2],
+[122,'奧爾特羅斯&提豐',2,6,7,3,0,2],[123,'惡魔牆',6,2,3,7,0,2],[124,'夢魔',7,2,6,3,0,2],
+[125,'奇美拉',7,2,2,7,0,2],[126,'藍龍',2,7,7,2,0,2],[127,'美男子布迦加',6,2,6,6,1,2],
+[128,'莫莫蒂·莫蒂',7,5,3,5,0,2],[129,'十指巴德龍',3,5,5,7,0,2],[130,'繆恩',5,3,7,5,0,2],
+[131,'莉維亞·薩斯·尤尼烏斯',3,7,1,7,4,2],[132,'里塔提恩·薩斯·阿維納',7,3,7,1,4,2],
+[133,'比格斯&魏吉',5,7,5,3,0,2],[134,'蓋羅爾特·布拉克索恩',1,3,7,7,0,2],
+[135,'弗里克希奧',6,6,6,2,1,2],[136,'繆塔米克斯',2,6,6,6,1,2],[137,'梅梅盧恩',6,6,2,6,1,2],
+[138,'貝希摩斯',7,4,2,8,0,3],[139,'吉爾伽美什&恩奇都',8,7,3,3,0,3],
+[140,'伊弗利特',7,6,7,1,2,3],[141,'泰坦',1,7,6,7,2,3],[142,'迦樓羅',7,1,7,6,2,3],
+[143,'賢王莫古爾·莫古十二世',7,7,1,6,2,3],[144,'拉雅·奧·神納&阿·盧恩·神納',5,6,6,6,0,3],
+[145,'戈德伯特·曼德維爾',6,5,6,6,0,3],[146,'桑克瑞德',2,8,7,3,3,3],
+[147,'尼祿·托爾·斯卡艾瓦',4,8,7,1,4,3],[148,'帕帕力莫&伊達',3,8,2,7,3,3],
+[149,'雅·修特拉',7,1,4,8,3,3],[150,'于里昂熱·奧居雷',8,4,7,1,3,3],
+[151,'究極神兵',7,9,1,8,4,4],[152,'奧丁',8,1,8,8,2,4],[153,'拉姆',8,8,8,1,2,4],
+[154,'利維亞桑',8,8,1,8,2,4],[155,'希瓦',1,8,8,8,2,4],[156,'敏菲利亞',9,3,5,8,3,4],
+[157,'無影拉哈布雷亞',4,4,8,9,0,4],[158,'西德·加隆德',5,9,2,9,0,4],
+[159,'阿爾菲諾&阿莉塞',9,3,9,3,3,4],[160,'路易索瓦·萊韋耶勒爾',9,9,3,4,3,4],
+[161,'巴哈姆特',9,9,6,5,2,5],[162,'希爾迪布蘭德&娜修·瑪卡拉卡',1,10,8,8,0,5],
+[163,'娜娜莫·烏爾·娜莫',10,4,8,6,0,5],[164,'蓋烏斯·范·巴埃薩',4,5,9,10,4,5],
+[166,'嘉恩·艾·神納',9,1,7,10,0,5],[167,'勞班·阿爾丁',6,9,10,2,0,5],
+[213,'皮平·塔魯平',6,6,6,5,0,3],[228,'光鱗兄弟莫拉加加',3,2,8,7,1,3],
+[241,'羅羅力特·納納力特',4,7,3,3,0,2],[262,'晴天霹靂托佐爾·法托特爾',7,6,2,6,1,3]
+].map(a=>({id:a[0],n:a[1],v:[a[2],a[3],a[4],a[5]],t:a[6],s:a[7],src:'base'}));
+
+const NPCS = [
+{n:'梅梅盧恩',loc:'拉諾西亞高地 (14.7, 24.3)',area:'拉諾西亞',ver:'2.51',rules:['全明牌'],rw:[137,114,102,228],pool:[137,114,101,121,102,107,112]},
+{n:'黑桃天王喬納斯',loc:'金碟遊樂場 (4.6, 7.3)',area:'金碟遊樂場',ver:'2.51',rules:['全明牌','同數'],region:1,rw:[115,120],pool:[123,103,104,126,111,115,120]},
+{n:'麥森塔',loc:'格里達尼亞新街 (11.5, 11.2)',area:'黑衣森林',ver:'2.51',rules:['全明牌'],rw:[116,108],pool:[136,107,110,124,116,108]},
+{n:'羅傑',loc:'中薩納蘭 (19.4, 20.6)',area:'薩納蘭',ver:'2.51',rules:['全明牌'],rw:[109,105],pool:[126,109,113,125,115,105,106]},
+{n:'方塊天王古特文特',loc:'金碟遊樂場 (4.3, 6.9)',area:'金碟遊樂場',ver:'2.51',rules:['三明牌','加算'],region:1,rw:[127,113],pool:[138,126,106,127,113,111,108]},
+{n:'繆恩',loc:'格里達尼亞新街 (11.7, 13.5)',area:'黑衣森林',ver:'2.51',rules:['三明牌'],rw:[130,112],pool:[130,129,115,135,128,111,112,105]},
+{n:'維蒙德',loc:'烏爾達哈現世迴廊 (9.8, 8.7)',area:'薩納蘭',ver:'2.51',rules:['三明牌'],rw:[108,241],pool:[122,128,113,126,104,107,108]},
+{n:'莫莫蒂',loc:'烏爾達哈現世迴廊 (11.6, 9.6)',area:'薩納蘭',ver:'2.51',rules:['三明牌'],rw:[128],pool:[128,130,114,136,129,113,110,108]},
+{n:'芙·霍芭絲',loc:'中薩納蘭 (23.5, 13.9)',area:'薩納蘭',ver:'2.51',rules:['三明牌'],rw:[136],pool:[145,136,114,123,113,118,105,106]},
+{n:'幻卡大師',loc:'金碟遊樂場 (4.1, 7.4)',area:'金碟遊樂場',ver:'2.51',rules:['全明牌'],region:1,rw:[104],pool:[113,107,102,105,104]},
+{n:'若約',loc:'庫爾札斯中央高地 (13.2, 15.5)',area:'庫爾札斯',ver:'2.51',rules:['三明牌'],rw:[159,115],pool:[138,133,102,159,126,114,112,115]},
+{n:'梅花天王歐里福',loc:'金碟遊樂場 (4.1, 7.7)',area:'金碟遊樂場',ver:'2.51',rules:['三明牌','秩序'],region:1,rw:[127,112],pool:[151,124,137,127,120,116,112]},
+{n:'皮拉爾諾',loc:'黑衣森林東部林區 (17.4, 26.5)',area:'黑衣森林',ver:'2.51',rules:['三明牌'],rw:[135,124],pool:[156,124,135,144,130,110,118,114]},
+{n:'特拉哈塗姆',loc:'拉諾西亞低地 (35.6, 15.9)',area:'拉諾西亞',ver:'2.51',rules:['三明牌'],rw:[141,120],pool:[141,134,102,149,126,122,120]},
+{n:'彌彌德亞',loc:'拉諾西亞低地 (25.1, 35.0)',area:'拉諾西亞',ver:'2.51',rules:['三明牌'],rw:[133,121],pool:[154,133,119,137,125,115,113,120]},
+{n:'巴德龍',loc:'利姆薩·羅敏薩上層甲板 (11.6, 11.1)',area:'拉諾西亞',ver:'2.51',rules:['三明牌'],rw:[129,118],pool:[128,129,130,149,121,127,118,117]},
+{n:'弗弗魯帕',loc:'西薩納蘭 (22.6, 17.1)',area:'薩納蘭',ver:'2.51',rules:['三明牌'],rw:[146,125],pool:[133,128,102,167,146,119,120,113]},
+{n:'海爾姆哈特',loc:'東薩納蘭 (20.1, 21.4)',area:'薩納蘭',ver:'2.51',rules:['三明牌'],rw:[122,134],pool:[145,134,111,160,141,122,127,102]},
+{n:'奧爾蒂里克',loc:'庫爾札斯中央高地 (6.2, 22.5)',area:'庫爾札斯',ver:'2.51',rules:['秩序'],rw:[138,126,111],pool:[155,151,150,144,138,126,133]},
+{n:'紅心天王魯希特威達',loc:'金碟遊樂場 (3.8, 7.5)',area:'金碟遊樂場',ver:'2.51',rules:['同類強化','不勝不休'],region:1,rw:[145,150],pool:[159,156,147,157,158,143,150,145]},
+{n:'馬爾塞特',loc:'黑衣森林中央林區 (16.5, 18.6)',area:'黑衣森林',ver:'2.51',rules:['混亂'],rw:[142,135],pool:[152,153,157,144,147,142,138,135]},
+{n:'巴斯卡隆',loc:'黑衣森林南部林區 (18.1, 19.8)',area:'黑衣森林',ver:'2.51',rules:['秩序'],rw:[148,144,123],pool:[166,152,143,148,142,139,144]},
+{n:'賽茲爾·托托羅克',loc:'黑衣森林北部林區 (24.4, 23.4)',area:'黑衣森林',ver:'2.51',rules:['同數','加算'],region:1,rw:[158,138,133,262],pool:[158,151,133,145,138,147]},
+{n:'朗德內爾',loc:'黑衣森林南部林區 (16.8, 28.2)',area:'黑衣森林',ver:'2.51',rules:['王牌殺手','混亂'],region:1,rw:[152,141],pool:[152,141,166,140,132,113]},
+{n:'幻卡王埃爾默',loc:'金碟遊樂場 (3.8, 7.8)',area:'金碟遊樂場',ver:'2.51',rules:['加算'],region:1,rw:[161,145],pool:[161,150,145,162,141,139,149]},
+{n:'沃爾賽勒',loc:'格里達尼亞新街 (9.7, 11.1)',area:'黑衣森林',ver:'2.51',rules:['同類強化'],region:1,rw:[166,153,148,143],pool:[166,156,153,163,158,148,143]},
+{n:'斯威夫特',loc:'烏爾達哈現世迴廊 (8.4, 8.9)',area:'薩納蘭',ver:'2.51',rules:['混亂'],region:1,rw:[167,159,140,213],pool:[167,128,122,159,146,140,133,119]},
+{n:'哈布',loc:'南薩納蘭 (24.8, 40.9)',area:'薩納蘭',ver:'2.51',rules:['同類弱化'],region:1,rw:[162,146,145],pool:[162,145,167,152,146,134,103]},
+{n:'懶散的帝國兵',loc:'摩杜納 (11.9, 17.4)',area:'摩杜納',ver:'2.51',rules:['同類強化'],region:1,rw:[164,147,131,132],pool:[164,161,147,142,131,132,137,127]},
+{n:'羅薇娜',loc:'摩杜納 (21.9, 4.9)',area:'摩杜納',ver:'2.51',rules:['天選','不勝不休'],region:1,rw:[160,134],pool:[134,161,129,160,147,139,145]}
+];
+
+const RULE_DEFS = [
+ ['同數','相鄰兩張以上的數字完全相同即翻面'],
+ ['加算','相鄰兩組數字和相同即翻面'],
+ ['同數壁','邊界視為 A，可湊「同數」'],
+ ['連鎖','由同數/加算翻的牌會再依大小連鎖翻'],
+ ['逆轉','數字小的一方獲勝'],
+ ['王牌殺手','A 會輸給 1（逆轉時反過來）'],
+ ['同類強化','場上每多一張同類型卡，該類全數值 +1'],
+ ['同類弱化','場上每多一張同類型卡，該類全數值 −1'],
+ ['秩序','只能從左邊算起依序出牌'],
+ ['混亂','系統隨機指定你要出的牌'],
+ ['全明牌','雙方五張全部公開'],
+ ['三明牌','雙方各公開三張'],
+ ['不勝不休','平手則以翻到的牌重賽（不影響單局推算）'],
+ ['交換','開局隨機互換一張（請直接調整雙方手牌）'],
+ ['天選','規則隨機（請照實際抽到的規則勾選）'],
+ ['隨機','牌組隨機（請直接填入實際拿到的五張）']
+];
+const CALC_RULES = ['同數','加算','同數壁','連鎖','逆轉','王牌殺手','同類強化','同類弱化','秩序'];
+
+/* ===================== 規則引擎 ===================== */
+const OPPS=[1,0,3,2];                       // 上下左右 的對面
+const NB=[],WALL=[];
+for(let i=0;i<9;i++){const r=(i/3)|0,c=i%3,a=[],w=[];
+  if(r>0)a.push([0,i-3]); else w.push(0);
+  if(r<2)a.push([1,i+3]); else w.push(1);
+  if(c>0)a.push([2,i-1]); else w.push(2);
+  if(c<2)a.push([3,i+1]); else w.push(3);
+  NB.push(a);WALL.push(w);}
+
+function effAll(b,R){
+  const cnt=[0,0,0,0,0];
+  for(const x of b) if(x&&x.c.t) cnt[x.c.t]++;
+  const asc=R['同類強化'],dsc=R['同類弱化'];
+  return b.map(x=>{
+    if(!x)return null;
+    let d=0;
+    if(x.c.t&&(asc||dsc)){const n=Math.max(0,cnt[x.c.t]-1); d=asc?n:-n;}
+    return x.c.v.map(v=>Math.max(1,Math.min(10,v+d)));
+  });
+}
+function beats(a,b,R){
+  if(R['王牌殺手']){
+    if(R['逆轉']){ if(a===10&&b===1)return true; if(a===1&&b===10)return false; }
+    else { if(a===1&&b===10)return true; if(a===10&&b===1)return false; }
+  }
+  return R['逆轉']? a<b : a>b;
+}
+/* 在 pos 落子後結算翻牌。b 會被就地修改 */
+function resolve(b,pos,R){
+  const me=b[pos].o, EV=effAll(b,R), mv=EV[pos];
+  const flipped=[];
+  const grab=j=>{ if(b[j].o!==me){b[j].o=me;flipped.push(j);} };
+  /* 同數 / 加算 */
+  const sameHit=[]; const sums={};
+  for(const [d,j] of NB[pos]){
+    if(!b[j])continue;
+    const a=mv[d], o=EV[j][OPPS[d]];
+    if(a===o) sameHit.push(j);
+    (sums[a+o]=sums[a+o]||[]).push(j);
+  }
+  let wallSame=0;
+  if(R['同數壁']) for(const d of WALL[pos]) if(mv[d]===10) wallSame++;
+  const special=[];
+  if(R['同數']&&(sameHit.length+wallSame)>=2) special.push(...sameHit);
+  if(R['加算']) for(const k in sums) if(sums[k].length>=2) special.push(...sums[k]);
+  const before=flipped.length;
+  for(const j of new Set(special)) grab(j);
+  /* 連鎖 */
+  if(flipped.length>before&&R['連鎖']!==false){
+    const q=flipped.slice(before);
+    while(q.length){
+      const p=q.shift();
+      for(const [d,j] of NB[p]){
+        if(!b[j]||b[j].o===me)continue;
+        if(beats(EV[p][d],EV[j][OPPS[d]],R)){ b[j].o=me; flipped.push(j); q.push(j); }
+      }
+    }
+  }
+  /* 一般比大小 */
+  for(const [d,j] of NB[pos]){
+    if(!b[j]||b[j].o===me)continue;
+    if(beats(mv[d],EV[j][OPPS[d]],R)) grab(j);
+  }
+  return flipped;
+}
+function cloneS(s){return{b:s.b.map(x=>x?{c:x.c,o:x.o}:null),h:[s.h[0].slice(),s.h[1].slice()],turn:s.turn,filled:s.filled,R:s.R};}
+function play(s,hi,pos){
+  const n=cloneS(s), card=n.h[s.turn][hi];
+  n.h[s.turn]=n.h[s.turn].filter((_,i)=>i!==hi);
+  n.b[pos]={c:card,o:s.turn}; n.filled++;
+  resolve(n.b,pos,n.R);
+  n.turn=1-s.turn;
+  return n;
+}
+function diffOf(s){let m=s.h[0].length,o=s.h[1].length;for(const x of s.b)if(x)x.o===0?m++:o++;return m-o;}
+function heur(s){
+  let v=diffOf(s)*1000;
+  const EV=effAll(s.b,s.R);
+  for(let i=0;i<9;i++){
+    if(!s.b[i])continue;
+    let exp=0,open=0;
+    for(const [d,j] of NB[i]) if(!s.b[j]){exp+=EV[i][d];open++;}
+    if(!open)continue;
+    const q=(exp/open-5)*6;
+    v+= s.b[i].o===0? q : -q;
+  }
+  return v;
+}
+/* ---------- 高速搜尋核心（扁平陣列 + make/unmake） ---------- */
+let CV,CTY,CSIG,OCC,OWN,TC,HAND,HM;
+let SAME,PLUS,SWALL,COMBO,REV,FACE,ASC,DSC,ORDER;
+const FLIP=new Int32Array(512); let FTOP=0;
+const SH=new Int32Array(4),SUMC=new Int8Array(24),SUMJ=new Int32Array(96),TOUCH=new Int32Array(8),CQ=new Int32Array(16);
+let NODES=0,TSTOP=0,TIMEDOUT=false,WINB=false;
+const NODECAP=3500000;
+function finalF(){const d=diffF();return d*1000+(WINB?(d>0?2500:d<0?-2500:0):0);}
+const pc=x=>{let n=0;while(x){n+=x&1;x>>=1;}return n;};
+function ev(cell,dir){
+  const c=OCC[cell]; let v=CV[c*4+dir]; const t=CTY[c];
+  if(t&&(ASC||DSC)){ const n=TC[t]-1; v+= ASC? n : -n; if(v<1)v=1; else if(v>10)v=10; }
+  return v;
+}
+function beatsF(a,b){
+  if(FACE){ if(REV){ if(a===10&&b===1)return true; if(a===1&&b===10)return false; }
+            else    { if(a===1&&b===10)return true; if(a===10&&b===1)return false; } }
+  return REV? a<b : a>b;
+}
+function resolveF(pos,me){
+  const nb=NB[pos]; let shc=0,tc=0;
+  for(let k=0;k<nb.length;k++){
+    const d=nb[k][0],j=nb[k][1]; if(OCC[j]<0)continue;
+    const a=ev(pos,d),o=ev(j,OPPS[d]);
+    if(a===o)SH[shc++]=j;
+    const s=a+o; if(SUMC[s]===0)TOUCH[tc++]=s; SUMJ[s*4+SUMC[s]++]=j;
+  }
+  let wall=0;
+  if(SWALL){const w=WALL[pos];for(let k=0;k<w.length;k++)if(ev(pos,w[k])===10)wall++;}
+  const sp=FTOP;
+  if(SAME&&shc+wall>=2) for(let k=0;k<shc;k++){const j=SH[k];if(OWN[j]!==me){OWN[j]=me;FLIP[FTOP++]=j;}}
+  if(PLUS) for(let k=0;k<tc;k++){const s=TOUCH[k];
+    if(SUMC[s]>=2) for(let m=0;m<SUMC[s];m++){const j=SUMJ[s*4+m];if(OWN[j]!==me){OWN[j]=me;FLIP[FTOP++]=j;}}}
+  for(let k=0;k<tc;k++)SUMC[TOUCH[k]]=0;
+  if(COMBO&&FTOP>sp){
+    let qh=0,qt=0; for(let k=sp;k<FTOP;k++)CQ[qt++]=FLIP[k];
+    while(qh<qt){
+      const p=CQ[qh++],n2=NB[p];
+      for(let k=0;k<n2.length;k++){
+        const d=n2[k][0],j=n2[k][1];
+        if(OCC[j]<0||OWN[j]===me)continue;
+        if(beatsF(ev(p,d),ev(j,OPPS[d]))){OWN[j]=me;FLIP[FTOP++]=j;if(qt<16)CQ[qt++]=j;}
+      }
+    }
+  }
+  for(let k=0;k<nb.length;k++){
+    const d=nb[k][0],j=nb[k][1];
+    if(OCC[j]<0||OWN[j]===me)continue;
+    if(beatsF(ev(pos,d),ev(j,OPPS[d]))){OWN[j]=me;FLIP[FTOP++]=j;}
+  }
+}
+function makeF(pos,ci,p){OCC[pos]=ci;OWN[pos]=p;const t=CTY[ci];if(t)TC[t]++;resolveF(pos,p);}
+function unmakeF(pos,ci,p,st){while(FTOP>st)OWN[FLIP[--FTOP]]=1-p;const t=CTY[ci];if(t)TC[t]--;OCC[pos]=-1;}
+function diffF(){let d=pc(HM[0])-pc(HM[1]);for(let i=0;i<9;i++)if(OCC[i]>=0)d+=OWN[i]===0?1:-1;return d;}
+function heurF(){
+  let v=diffF()*1000;
+  for(let i=0;i<9;i++){
+    if(OCC[i]<0)continue; const nb=NB[i]; let e=0,o=0;
+    for(let k=0;k<nb.length;k++)if(OCC[nb[k][1]]<0){e+=ev(i,nb[k][0]);o++;}
+    if(!o)continue; const q=(e/o-5)*6; v+= OWN[i]===0? q : -q;
+  }
+  return v;
+}
+function handIdxs(turn){
+  const hm=HM[turn],hand=HAND[turn],out=[];
+  for(let i=0;i<5;i++){
+    if(!(hm&(1<<i)))continue;
+    if(ORDER){out.push(i);break;}
+    let dup=false; for(let k=0;k<out.length;k++)if(CSIG[hand[i]]===CSIG[hand[out[k]]]){dup=true;break;}
+    if(!dup)out.push(i);
+  }
+  return out;
+}
+function abF(depth,alpha,beta,turn,filled){
+  if(filled===9)return finalF();
+  if(depth<=0)return heurF();
+  if(NODES>NODECAP){TIMEDOUT=true;return heurF();}
+  if(((NODES++)&255)===0&&Date.now()>TSTOP){TIMEDOUT=true;return heurF();}
+  const hand=HAND[turn],cis=handIdxs(turn);
+  if(!cis.length)return heurF();
+  let mv=[];
+  for(let a2=0;a2<cis.length;a2++)for(let p=0;p<9;p++)if(OCC[p]<0)mv.push(cis[a2]*16+p);
+  if(depth>=3&&mv.length>2){
+    const sc=[];
+    for(let k=0;k<mv.length;k++){
+      const i=mv[k]>>4,p=mv[k]&15,ci=hand[i],st=FTOP;
+      makeF(p,ci,turn); sc[k]=diffF(); unmakeF(p,ci,turn,st);
+    }
+    const ord=mv.map((_,k)=>k);
+    ord.sort((x,y)=>turn===0?sc[y]-sc[x]:sc[x]-sc[y]);
+    mv=ord.map(k=>mv[k]);
+  }
+  let best= turn===0? -1e12 : 1e12;
+  for(let k=0;k<mv.length;k++){
+    const i=mv[k]>>4,p=mv[k]&15,ci=hand[i],st=FTOP;
+    makeF(p,ci,turn); HM[turn]&=~(1<<i);
+    const v=abF(depth-1,alpha,beta,1-turn,filled+1);
+    HM[turn]|=(1<<i); unmakeF(p,ci,turn,st);
+    if(turn===0){ if(v>best)best=v; if(best>alpha)alpha=best; }
+    else { if(v<best)best=v; if(best<beta)beta=best; }
+    if(alpha>=beta)break;
+  }
+  return best;
+}
+function simInit(s){
+  const list=[],map=new Map();
+  const push=c=>{ if(map.has(c))return map.get(c); const i=list.length; list.push(c); map.set(c,i); return i; };
+  OCC=new Int8Array(9).fill(-1); OWN=new Int8Array(9); TC=new Int8Array(5);
+  const cells=[];
+  for(let i=0;i<9;i++){ if(!s.b[i]){cells.push(-1);continue;} cells.push(push(s.b[i].c)); }
+  HAND=[new Int32Array(5),new Int32Array(5)]; HM=[0,0];
+  for(let p=0;p<2;p++) s.h[p].forEach((c,i)=>{HAND[p][i]=push(c);HM[p]|=1<<i;});
+  CV=new Int8Array(list.length*4); CTY=new Int8Array(list.length); CSIG=new Int32Array(list.length);
+  const sig=new Map();
+  list.forEach((c,i)=>{ for(let d=0;d<4;d++)CV[i*4+d]=c.v[d]; CTY[i]=c.t||0;
+    const k=c.v.join()+'/'+(c.t||0); if(!sig.has(k))sig.set(k,sig.size); CSIG[i]=sig.get(k); });
+  for(let i=0;i<9;i++){ if(cells[i]<0)continue; OCC[i]=cells[i]; OWN[i]=s.b[i].o; const t=CTY[cells[i]]; if(t)TC[t]++; }
+  const R=s.R;
+  SAME=!!R['同數'];PLUS=!!R['加算'];SWALL=!!R['同數壁'];COMBO=R['連鎖']!==false;
+  REV=!!R['逆轉'];FACE=!!R['王牌殺手'];ASC=!!R['同類強化'];DSC=!!R['同類弱化'];ORDER=!!R['秩序'];
+  FTOP=0;
+}
+/* 未知手牌補齊 */
+function fillUnknown(s,pool,ghost,seed){
+  const n=cloneS(s);
+  const used=new Set();
+  for(const x of n.b) if(x&&x.c.id) used.add(x.c.id);
+  for(const c of n.h[0]) if(c.id) used.add(c.id);
+  for(const c of n.h[1]) if(c.id) used.add(c.id);
+  let avail=pool.filter(c=>!used.has(c.id));
+  if(seed>0){ for(let i=avail.length-1;i>0;i--){const j=Math.floor(rnd(seed*97+i)*(i+1));[avail[i],avail[j]]=[avail[j],avail[i]];} }
+  else avail=avail.slice().sort((a,b)=>sum(b.v)-sum(a.v));
+  n.h[1]=n.h[1].map(c=>{
+    if(!c.unknown)return c;
+    return avail.length? avail.shift() : ghost;
+  });
+  return n;
+}
+function sum(v){return v[0]+v[1]+v[2]+v[3];}
+function rnd(x){const t=Math.sin(x)*10000;return t-Math.floor(t);}
+
+/* 單一最佳手（任一方） */
+function bestMove(state,depth,budget){
+  NODES=0;TIMEDOUT=false;TSTOP=Date.now()+(budget||400);
+  simInit(state);
+  const t=state.turn,cis=handIdxs(t);let best=null;
+  for(const i of cis)for(let p=0;p<9;p++){
+    if(OCC[p]>=0)continue;
+    const ci=HAND[t][i],st=FTOP;
+    makeF(p,ci,t);HM[t]&=~(1<<i);
+    const v=abF(depth-1,-1e12,1e12,1-t,state.filled+1);
+    HM[t]|=(1<<i);unmakeF(p,ci,t,st);
+    if(!best||(t===0? v>best.v : v<best.v))best={i,p,v};
+  }
+  return best;
+}
+/* 回傳建議清單 */
+function recommend(state,pool,ghost,depth,samples,onlyHi,budget){
+  NODES=0; TIMEDOUT=false; TSTOP=Date.now()+(budget||2600);
+  const S=Math.max(1,samples), acc=new Map();
+  for(let k=0;k<S;k++){
+    const s=fillUnknown(state,pool,ghost,k);
+    simInit(s);
+    const cis= onlyHi!=null? [onlyHi] : handIdxs(0);
+    for(const i of cis){
+      for(let p=0;p<9;p++){
+        if(OCC[p]>=0)continue;
+        const ci=HAND[0][i],st=FTOP;
+        makeF(p,ci,0); HM[0]&=~(1<<i);
+        const v=abF(depth-1,-1e12,1e12,1,state.filled+1);
+        HM[0]|=(1<<i); unmakeF(p,ci,0,st);
+        const key=i+':'+p; acc.set(key,(acc.get(key)||0)+v/S);
+      }
+    }
+  }
+  const list=[...acc.entries()].map(([k,v])=>{const [hi,pos]=k.split(':').map(Number);
+    return {hi,pos,v,card:state.h[0][hi]};});
+  list.sort((a,b)=>b.v-a.v);
+  return list;
+}
+
+/* ===================== 共用 ===================== */
+const $=s=>document.querySelector(s);
+const MEM={};
+const Store={
+  async get(k){
+    try{ if(window.storage){const r=await window.storage.get(k); if(r) return JSON.parse(r.value);} }catch(e){}
+    try{ const v=localStorage.getItem(k); if(v) return JSON.parse(v); }catch(e){}
+    return MEM[k]!==undefined?MEM[k]:null;
+  },
+  async set(k,v){ MEM[k]=v;
+    try{ if(window.storage){await window.storage.set(k,JSON.stringify(v)); return;} }catch(e){}
+    try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){}
+  }
+};
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('on'),1700);}
+const A=v=>v===10?'A':String(v);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sameCard=(a,b)=>!!a&&!!b&&a.t===b.t&&a.v.join()===b.v.join();
+
+let DB=BASE_CARDS.slice(), DECKS=[null,null,null,null], MYNPC=[];
+const byId=id=>DB.find(c=>c.id===id);
+const allNPC=()=>NPCS.map((n,i)=>Object.assign({key:'b'+i},n)).concat(MYNPC.map(n=>Object.assign({key:'c'+n.id},n)));
+const npcPool=n=>n.custom? n.pool.slice() : n.pool.map(byId).filter(Boolean);
+const saveDecks=()=>Store.set('tt_decks',DECKS);
+const saveCustom=()=>Store.set('tt_custom_cards',DB.filter(c=>c.src==='custom'));
+const saveNPC=()=>Store.set('tt_npcs',MYNPC);
+
+function cardHTML(c,cls='',attr='',ev=null){
+  if(!c||c.unknown) return `<div class="tt add ${cls}" ${attr}><span>＋</span><span>填入數值</span></div>`;
+  const v=ev||c.v, mk=i=>ev? (ev[i]>c.v[i]?'up':ev[i]<c.v[i]?'dn':'') : '';
+  return `<div class="tt ${cls}" ${attr}>
+    <div class="ty">${c.t?TYPES[c.t]:''}</div><div class="st">${c.s?'★'+c.s:''}</div>
+    <div class="v u ${mk(0)}">${A(v[0])}</div><div class="v d ${mk(1)}">${A(v[1])}</div>
+    <div class="v l ${mk(2)}">${A(v[2])}</div><div class="v r ${mk(3)}">${A(v[3])}</div>
+    <div class="nm">${esc(c.n||'自訂')}</div></div>`;
+}
+const miniHTML=c=>c?`<div class="mini f" title="${esc(c.n||'')}"><span class="u">${A(c.v[0])}</span><span class="d">${A(c.v[1])}</span><span class="l">${A(c.v[2])}</span><span class="r">${A(c.v[3])}</span></div>`:`<div class="mini"></div>`;
+
+/* ---------- 挑卡視窗 ---------- */
+let pickCB=null;
+function openPicker(title,cb,opts={}){
+  pickCB=cb; const pool=opts.pool&&opts.pool.length?opts.pool:null;
+  $('#modal').innerHTML=`<h3>${esc(title)}</h3>
+   ${pool?`<div class="hint" style="margin:0 0 4px">對手卡池</div><div class="pickgrid" id="pgPool" style="max-height:26vh">${pool.map((c,i)=>cardHTML(c,'s tap',`data-p="${i}"`)).join('')}</div><hr class="sep">`:''}
+   <div class="row"><input type="text" id="pq" class="grow" placeholder="搜尋卡名或編號…">
+     ${opts.allowClear?`<button class="btn sm" id="pClr">清空</button>`:''}
+     <button class="btn sm" id="pX">關閉</button></div>
+   <div class="pickgrid" id="pg" style="margin-top:8px"></div>
+   <hr class="sep">
+   <div class="hint" style="margin:0 0 6px">按數字所在的位置填入 — 上排＝卡片上面的數字，左欄＝左邊的數字，以此類推。</div>
+   <div class="cross" id="mchips">
+     <div class="t"><div class="cblk"><span>↑ 上</span><div class="cgrid">${VALS.map(v=>`<button class="chip ${v===5?'on':''}" data-s="0" data-v="${v}">${A(v)}</button>`).join('')}</div></div></div>
+     <div class="l"><div class="cblk"><span>← 左</span><div class="cgrid">${VALS.map(v=>`<button class="chip ${v===5?'on':''}" data-s="2" data-v="${v}">${A(v)}</button>`).join('')}</div></div></div>
+     <div class="m" id="mprev"></div>
+     <div class="r"><div class="cblk"><span>右 →</span><div class="cgrid">${VALS.map(v=>`<button class="chip ${v===5?'on':''}" data-s="3" data-v="${v}">${A(v)}</button>`).join('')}</div></div></div>
+     <div class="b"><div class="cblk"><div class="cgrid">${VALS.map(v=>`<button class="chip ${v===5?'on':''}" data-s="1" data-v="${v}">${A(v)}</button>`).join('')}</div><span>↓ 下</span></div></div>
+   </div>
+   <div class="row" style="margin-top:8px">
+     <label class="fld grow">卡名（可空）<input type="text" id="mn" placeholder="自訂"></label>
+     <label class="fld">類型<select id="mt">${TYPES.map((t,i)=>`<option value="${i}">${t==='—'?'無類型':t}</option>`).join('')}</select></label>
+   </div>
+   <div class="row" style="margin-top:10px">
+     <button class="btn go grow" id="mOK" style="justify-content:center">使用這張</button>
+     ${opts.saveToLib?`<button class="btn" id="mSave">存進卡牌庫</button>`:''}
+   </div>`;
+  $('#scrim').classList.add('on');
+  const draw=()=>{const q=$('#pq').value.trim();
+    $('#pg').innerHTML=DB.filter(c=>!q||c.n.includes(q)||String(c.id).includes(q)).slice(0,200)
+      .map(c=>cardHTML(c,'s tap',`data-id="${c.id}"`)).join('')||'<p class="hint">找不到卡片。</p>';};
+  draw(); $('#pq').oninput=draw;
+  $('#pX').onclick=closeModal;
+  if($('#pClr'))$('#pClr').onclick=()=>{pickCB&&pickCB(null);closeModal();};
+  $('#pg').onclick=e=>{const d=e.target.closest('[data-id]');if(!d)return;pickCB&&pickCB(byId(+d.dataset.id));closeModal();};
+  if($('#pgPool'))$('#pgPool').onclick=e=>{const d=e.target.closest('[data-p]');if(!d)return;pickCB&&pickCB(pool[+d.dataset.p]);closeModal();};
+  const MV=[5,5,5,5];
+  const prev=()=>{$('#mprev').innerHTML=cardHTML({n:$('#mn').value.trim()||'自訂',v:MV,t:+$('#mt').value,s:0});};
+  prev();
+  $('#mchips').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;
+    const sd=+b.dataset.s;MV[sd]=+b.dataset.v;
+    $('#mchips').querySelectorAll('.chip[data-s="'+sd+'"]').forEach(x=>x.classList.toggle('on',x===b));prev();};
+  $('#mn').oninput=prev; $('#mt').onchange=prev;
+  const read=()=>({id:null,n:$('#mn').value.trim()||'自訂',v:MV.slice(),t:+$('#mt').value,s:0,src:'manual'});
+  $('#mOK').onclick=()=>{pickCB&&pickCB(read());closeModal();};
+  if($('#mSave'))$('#mSave').onclick=async()=>{const c=read();c.id=Math.max(900,...DB.map(x=>x.id||0))+1;c.src='custom';DB.push(c);await saveCustom();toast('已存入卡牌庫');draw();};
+}
+function closeModal(){$('#scrim').classList.remove('on');$('#modal').innerHTML='';pickCB=null;}
+$('#scrim').onclick=e=>{if(e.target.id==='scrim')closeModal();};
+
+/* ===================== 對戰設定 ===================== */
+const VALS=[1,2,3,4,5,6,7,8,9,10];
+const PICK_RULES=CALC_RULES.concat(['混亂','交換']);
+const TIERS={'1-3':{lb:'一般 ★1–3',lo:1,hi:3,g:5},'2-4':{lb:'中階 ★2–4',lo:2,hi:4,g:6},
+  '3-5':{lb:'高階 ★3–5',lo:3,hi:5,g:7},'4-5':{lb:'頂級 ★4–5',lo:4,hi:5,g:8}};
+const tierPool=k=>{const t=TIERS[k]||TIERS['3-5'];return DB.filter(c=>c.s>=t.lo&&c.s<=t.hi);};
+const PLAY={mode:'npc',key:'b0',deck:null,first:0,auto:true,ghost:7,goal:'win',rank:null,busy:'',tier:'3-5',
+  mySrc:'deck',freeMy:[null,null,null,null,null],
+  freeOpp:[null,null,null,null,null],freeRules:{'連鎖':true},f:{ver:'',area:'',q:''}};
+function renderPlay(){
+  const list=allNPC(), vers=[...new Set(list.map(n=>n.ver))], areas=[...new Set(list.map(n=>n.area))];
+  const shown=list.filter(n=>(!PLAY.f.ver||n.ver===PLAY.f.ver)&&(!PLAY.f.area||n.area===PLAY.f.area)&&
+    (!PLAY.f.q||n.n.includes(PLAY.f.q)||(n.loc||'').includes(PLAY.f.q)));
+  if(shown.length&&!shown.some(n=>n.key===PLAY.key))PLAY.key=shown[0].key;
+  const cur=list.find(n=>n.key===PLAY.key)||list[0];
+  const ready=DECKS.map((d,i)=>({d,i})).filter(x=>x.d&&x.d.cards.filter(Boolean).length===5);
+  if(PLAY.deck===null&&ready.length)PLAY.deck=ready[0].i;
+  const manual = PLAY.mode==='free' && PLAY.mySrc==='manual';
+
+  $('#p-play').innerHTML=`
+  <div class="blk"><h3>對手</h3>
+    <div class="seg" id="mode"><button data-m="npc" class="${PLAY.mode==='npc'?'on':''}">NPC</button><button data-m="free" class="${PLAY.mode==='free'?'on':''}">自訂 / 幻卡大賽</button></div>
+    ${PLAY.mode==='npc'?`
+      <div class="row" style="margin-top:10px">
+        <label class="fld">版本<select id="fv"><option value="">全部</option>${vers.map(v=>`<option ${PLAY.f.ver===v?'selected':''}>${v}</option>`).join('')}</select></label>
+        <label class="fld">地區<select id="fa"><option value="">全部</option>${areas.map(a=>`<option ${PLAY.f.area===a?'selected':''}>${a}</option>`).join('')}</select></label>
+        <label class="fld grow">搜尋<input type="text" id="fq" value="${esc(PLAY.f.q)}" placeholder="NPC 或地點"></label>
+      </div>
+      <div class="nplist" style="margin-top:8px">${shown.map(n=>`<div class="nprow ${n.key===PLAY.key?'on':''}" data-k="${n.key}">
+        <div><div class="l1">${esc(n.n)}${n.custom?' <span class="tag">自訂</span>':''}</div><div class="l2">${esc(n.loc||n.area||'')}</div></div>
+        <div class="rt">${n.rules.map(r=>`<span class="tag g">${r}</span>`).join('')}</div></div>`).join('')||'<p class="hint" style="padding:12px">沒有符合的 NPC。</p>'}</div>
+      ${cur?`<div style="margin-top:10px"><div class="row" style="gap:5px">
+        <b>${esc(cur.n)}</b>${cur.rules.map(r=>`<span class="tag g">${r}</span>`).join('')}
+        <span class="tag">卡池 ${cur.pool.length} 張</span></div>
+        <div class="rail scroll" style="margin-top:8px">${npcPool(cur).map(c=>cardHTML(c,'s')).join('')}</div>
+        <p class="hint">卡池 ≤5 張時＝對手的完整手牌，會直接全部帶入；超過 5 張時對戰中會列出全部候選讓你點選。</p>
+        <div class="row" style="margin-top:6px"><b class="dim" style="font-size:12px">加勾區域規則／天選抽到的規則：</b></div>
+        <div class="rules" id="extra" style="margin-top:6px">${PICK_RULES.map(r=>`<label data-r="${r}"><input type="checkbox" value="${r}" ${cur.rules.includes(r)?'checked disabled':''}><span>${r}<small>${RULE_DEFS.find(d=>d[0]===r)[1]}</small></span></label>`).join('')}</div>
+      </div>`:''}
+    `:`
+      <p class="hint" style="margin-top:8px">看得到的明牌先填進來，其餘留空；對戰中對手出牌時再填。</p>
+      <div class="rail" id="fopp" style="margin-top:6px">${PLAY.freeOpp.map((c,i)=>cardHTML(c,'opp tap',`data-o="${i}"`)).join('')}</div>
+      <div class="dim" style="font-size:12px;margin:12px 0 4px">對手牌力（推算他手上沒公開的牌時，會從這個等級的真實卡片裡抽樣）</div>
+      <div class="seg" id="ftier">${Object.keys(TIERS).map(k=>`<button data-k="${k}" class="${PLAY.tier===k?'on':''}">${TIERS[k].lb}</button>`).join('')}</div>
+      <div class="rules" id="frules" style="margin-top:10px">${RULE_DEFS.map(([r,d])=>`<label data-r="${r}" class="${PLAY.freeRules[r]?'on':''}"><input type="checkbox" value="${r}" ${PLAY.freeRules[r]?'checked':''} ${PICK_RULES.includes(r)||r==='連鎖'?'':'disabled'}><span>${r}<small>${d}${PICK_RULES.includes(r)||r==='連鎖'?'':' · 不影響推算'}</small></span></label>`).join('')}</div>
+    `}
+  </div>
+
+  <div class="blk"><h3>我方</h3>
+    ${PLAY.mode==='free'?`<div class="seg" id="msrc" style="margin-bottom:10px">
+      <button data-s="deck" class="${manual?'':'on'}">已存排組</button>
+      <button data-s="manual" class="${manual?'on':''}">本場手動輸入</button></div>`:''}
+    ${manual?`
+      <div class="rail" id="fmy">${PLAY.freeMy.map((c,i)=>cardHTML(c,'mine tap',`data-my="${i}"`)).join('')}</div>
+      <p class="hint">點格子填入這場比賽拿到的五張牌（大賽的隨機／抽選牌組就用這個）。
+        <button class="btn sm" id="saveMy" style="margin-left:6px">存成排組</button></p>`
+     :(ready.length?`<div class="row" id="deckpick">${ready.map(x=>`<button class="btn ${PLAY.deck===x.i?'on':''}" data-d="${x.i}">${esc(x.d.name)}</button>`).join('')}</div>
+      <div class="rail" style="margin-top:10px">${(DECKS[PLAY.deck]||ready[0].d).cards.map(c=>cardHTML(c,'mine s')).join('')}</div>`
+     :`<p class="hint" style="margin:0">還沒有完整的五張排組。<button class="btn sm" id="goDeck" style="margin-left:6px">去建立排組</button></p>`)}
+    ${PLAY.mode==='npc'?`<div class="row" style="margin-top:10px">
+      <button class="btn sm" id="rankBtn">🔎 試算哪組排組贏面最大</button>
+      <span class="dim" style="font-size:12px">${esc(PLAY.busy||'')}</span></div>
+      ${PLAY.rank?`<ul class="rank">${PLAY.rank.map((r,i)=>`<li class="${i===0?'top':''}" data-r="${r.i}">
+        <span class="k">#${i+1}</span><b>${esc(r.name)}</b>
+        <span class="dim" style="font-size:12px">${r.win}勝 ${r.draw}和 ${r.lose}負 · 平均卡差 ${r.avg>0?'+':''}${r.avg.toFixed(1)}</span>
+        <span class="p">${Math.round(r.win/r.n*100)}%</span></li>`).join('')}</ul>`:''}`:''}
+    <hr class="sep">
+    <div class="row">
+      <span class="fld">目標</span>
+      <div class="seg" id="goal"><button data-g="win" class="${PLAY.goal==='win'?'on':''}">求勝</button><button data-g="cards" class="${PLAY.goal==='cards'?'on':''}">搶最多卡</button></div>
+      <span class="fld">先手</span>
+      <div class="seg" id="first"><button data-f="0" class="${PLAY.first===0?'on':''}">我先</button><button data-f="1" class="${PLAY.first===1?'on':''}">對手先</button></div>
+      <button class="btn ${PLAY.auto?'on':''}" id="autoT">${PLAY.auto?'✓ ':''}自動幫我落子</button>
+      <button class="btn go" id="go" style="margin-left:auto">開始對戰 →</button>
+    </div>
+  </div>`;
+
+  $('#mode').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;PLAY.mode=b.dataset.m;
+    PLAY.goal=PLAY.mode==='npc'?'win':'cards';PLAY.rank=null;renderPlay();};
+  if($('#fv')){$('#fv').onchange=e=>{PLAY.f.ver=e.target.value;renderPlay();};
+    $('#fa').onchange=e=>{PLAY.f.area=e.target.value;renderPlay();};
+    $('#fq').oninput=e=>{PLAY.f.q=e.target.value;};
+    $('#fq').onchange=e=>{PLAY.f.q=e.target.value;renderPlay();};
+    $('#p-play').querySelector('.nplist').onclick=e=>{const d=e.target.closest('[data-k]');if(!d)return;PLAY.key=d.dataset.k;renderPlay();};
+    $('#extra').onchange=e=>e.target.closest('label').classList.toggle('on',e.target.checked);}
+  if($('#fopp')){$('#fopp').onclick=e=>{const d=e.target.closest('[data-o]');if(!d)return;
+      openPicker('對手明牌 '+(+d.dataset.o+1),c=>{PLAY.freeOpp[+d.dataset.o]=c;renderPlay();},{allowClear:true});};
+    $('#frules').onchange=e=>{PLAY.freeRules[e.target.value]=e.target.checked;e.target.closest('label').classList.toggle('on',e.target.checked);};
+    $('#ftier').onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;PLAY.tier=b.dataset.k;renderPlay();};}
+  if($('#msrc'))$('#msrc').onclick=e=>{const b=e.target.closest('[data-s]');if(!b)return;PLAY.mySrc=b.dataset.s;renderPlay();};
+  if($('#fmy'))$('#fmy').onclick=e=>{const b=e.target.closest('[data-my]');if(!b)return;
+    openPicker('我的第 '+(+b.dataset.my+1)+' 張',c=>{PLAY.freeMy[+b.dataset.my]=c;renderPlay();},{allowClear:true,saveToLib:true});};
+  if($('#saveMy'))$('#saveMy').onclick=async()=>{
+    if(PLAY.freeMy.filter(Boolean).length!==5){toast('五張都填滿才能存');return;}
+    let k=DECKS.findIndex(d=>!d); if(k<0)k=3;
+    DECKS[k]={name:'大賽排組',cards:PLAY.freeMy.slice()};await saveDecks();renderDecks();renderPlay();toast('已存成排組 '+(k+1));};
+  if($('#deckpick'))$('#deckpick').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;PLAY.deck=+b.dataset.d;renderPlay();};
+  if($('#goDeck'))$('#goDeck').onclick=()=>showTab('decks');
+  $('#goal').onclick=e=>{const b=e.target.closest('[data-g]');if(!b)return;PLAY.goal=b.dataset.g;PLAY.rank=null;renderPlay();};
+  if($('#rankBtn'))$('#rankBtn').onclick=()=>rankDecks();
+  if($('#p-play').querySelector('.rank'))$('#p-play').querySelector('.rank').onclick=e=>{
+    const li=e.target.closest('[data-r]');if(!li)return;PLAY.deck=+li.dataset.r;renderPlay();};
+  $('#first').onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;PLAY.first=+b.dataset.f;renderPlay();};
+  $('#autoT').onclick=()=>{PLAY.auto=!PLAY.auto;renderPlay();};
+  $('#go').onclick=()=>{
+    let myCards;
+    if(manual){
+      if(PLAY.freeMy.filter(Boolean).length!==5){toast('請先填滿我方五張牌');return;}
+      myCards=PLAY.freeMy.slice();
+    }else{
+      const d=DECKS[PLAY.deck];
+      if(!d||d.cards.filter(Boolean).length!==5){toast('請先選一組五張的排組');return;}
+      myCards=d.cards.slice();
+    }
+    if(PLAY.mode==='npc'){
+      const cur=allNPC().find(n=>n.key===PLAY.key); if(!cur){toast('請選一個 NPC');return;}
+      const R={'連鎖':true}; cur.rules.forEach(r=>{R[r]=true;});
+      $('#extra').querySelectorAll('input:checked').forEach(i=>R[i.value]=true);
+      startBattle({title:cur.n,R,pool:npcPool(cur),oppKnown:[],ghost:{unknown:true,n:'未知',v:[7,7,7,7],t:0},
+        myCards,first:PLAY.first,back:'play',goal:PLAY.goal});
+    }else{
+      const gv=(TIERS[PLAY.tier]||TIERS['3-5']).g;
+      const g={unknown:true,n:'未知',v:[gv,gv,gv,gv],t:0};
+      const R=Object.assign({},PLAY.freeRules);R['連鎖']=PLAY.freeRules['連鎖']!==false;
+      startBattle({title:'自訂對戰',R,pool:[],guessPool:tierPool(PLAY.tier),oppKnown:PLAY.freeOpp.filter(Boolean),ghost:g,
+        myCards,first:PLAY.first,back:'play',goal:PLAY.goal});
+    }
+  };
+}
+
+/* 依 NPC 卡池，實戰模擬各排組的勝率 */
+function shuffled(arr,seed){const a=arr.slice();
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd(seed*131+i*7+1)*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+const tick=()=>new Promise(r=>setTimeout(r,0));
+async function rankDecks(){
+  const cur=allNPC().find(n=>n.key===PLAY.key); if(!cur){toast('請先選 NPC');return;}
+  const ready=DECKS.map((d,i)=>({d,i})).filter(x=>x.d&&x.d.cards.filter(Boolean).length===5);
+  if(!ready.length){toast('還沒有完整的排組');return;}
+  const pool=npcPool(cur);
+  const R={'連鎖':true}; cur.rules.forEach(r=>{if(CALC_RULES.includes(r))R[r]=true;});
+  const ex=$('#extra'); if(ex)ex.querySelectorAll('input:checked').forEach(i=>R[i.value]=true);
+  WINB = PLAY.goal==='win';
+  const S = pool.length<=5?2:4;
+  const total=ready.length*2*S; let done=0;
+  const out=[];
+  PLAY.rank=null;
+  for(const x of ready){
+    let win=0,draw=0,lose=0,acc=0,n=0;
+    for(let first=0;first<2;first++)for(let k=0;k<S;k++){
+      const oh=shuffled(pool,k+first*17).slice(0,5);
+      while(oh.length<5)oh.push(Object.assign({},{unknown:true,n:'未知',v:[7,7,7,7],t:0}));
+      let st={b:Array(9).fill(null),h:[x.d.cards.slice(),oh],turn:first,filled:0,R};
+      while(st.filled<9){const bm=bestMove(st,5,700); if(!bm)break; st=play(st,bm.i,bm.p);}
+      const df=diffOf(st); n++; acc+=df; df>0?win++:df<0?lose++:draw++;
+      done++; PLAY.busy='模擬中… '+done+' / '+total;
+      const el=$('#p-play').querySelector('#rankBtn'); if(el&&el.nextElementSibling)el.nextElementSibling.textContent=PLAY.busy;
+      await tick();
+    }
+    out.push({i:x.i,name:x.d.name,win,draw,lose,n,avg:acc/n});
+  }
+  out.sort((a,b)=>(b.win/b.n-a.win/a.n)||(b.avg-a.avg));
+  PLAY.rank=out; PLAY.busy=''; PLAY.deck=out[0].i; renderPlay();
+  toast('建議使用：'+out[0].name);
+}
+
+/* ===================== 對戰盤 ===================== */
+let B=null;
+function startBattle(cfg){
+  const g=cfg.ghost, hand=[];
+  if(cfg.pool.length&&cfg.pool.length<=5) hand.push(...cfg.pool);
+  else hand.push(...(cfg.oppKnown||[]));
+  while(hand.length<5) hand.push(Object.assign({},g));
+  B={cfg,auto:PLAY.auto,sel:null,selSide:0,adv:[],last:null,noAuto:false,hist:[],gen:0,thinking:false,forced:null,editMine:false,
+     s:{b:Array(9).fill(null),h:[cfg.myCards.slice(),hand.slice(0,5)],turn:cfg.first,filled:0,R:cfg.R}};
+  showTab('battle');
+  if(B.s.turn===0) step(); else renderBattle();
+}
+function scoreNow(){let m=B.s.h[0].length,o=B.s.h[1].length;for(const x of B.s.b)if(x)x.o===0?m++:o++;return[m,o];}
+function poolLeft(){
+  if(!B.cfg.pool.length)return [];
+  const used=new Set(); for(const x of B.s.b) if(x&&x.c.id) used.add(x.c.id);
+  return B.cfg.pool.filter(c=>!used.has(c.id));
+}
+/* 推算用的取樣池：NPC 用他的卡池；自訂對戰用「對手牌力」對應的真實卡片 */
+function simPool(){
+  const p=poolLeft(); if(p.length)return p;
+  const gp=B.cfg.guessPool; if(!gp||!gp.length)return [];
+  const used=new Set();
+  for(const x of B.s.b) if(x&&x.c.id) used.add(x.c.id);
+  for(const c of B.s.h[0]) if(c&&c.id) used.add(c.id);
+  for(const c of B.s.h[1]) if(c&&!c.unknown&&c.id) used.add(c.id);
+  return gp.filter(c=>!used.has(c.id));
+}
+/* 保底：一步貪心，永遠算得出來 */
+function fallbackList(onlyHi){
+  const s=B.s,out=[];
+  for(let i=0;i<s.h[0].length;i++){
+    if(onlyHi!=null&&i!==onlyHi)continue;
+    for(let p=0;p<9;p++){
+      if(s.b[p])continue;
+      try{ out.push({hi:i,pos:p,v:diffOf(play(s,i,p))*1000,card:s.h[0][i]}); }catch(e){}
+    }
+  }
+  out.sort((a,b)=>b.v-a.v);
+  return out;
+}
+function think(onlyHi){
+  if(!B)return [];
+  const rem=9-B.s.filled; if(rem<=0)return [];
+  let list=null;
+  try{
+    WINB = B.cfg.goal!=='cards';
+    const budget = rem>=8?800 : rem===7?1100 : 2000;
+    const t0=Date.now(),pool=simPool();
+    const unknown=B.s.h[1].filter(c=>c.unknown).length;
+    const samples = (!unknown||pool.length<=B.s.h[1].length) ? 1
+                  : pool.length<=10 ? (rem>=8?2:3) : (rem>=8?4:6);
+    for(let d=3;d<=rem;d++){
+      const left=budget-(Date.now()-t0);
+      if(list&&left<60)break;
+      let r=null;
+      try{ r=recommend(B.s,pool,B.cfg.ghost,d,samples,onlyHi,Math.max(120,left)); }
+      catch(err){ console.error('search',err); break; }
+      if(r&&r.length&&(!TIMEDOUT||!list))list=r;
+      if(TIMEDOUT)break;
+    }
+  }catch(err){ console.error('think',err); }
+  if(!list||!list.length) list=fallbackList(onlyHi);
+  return list||[];
+}
+function est(v0){let v=v0; if(WINB){ if(v>1250)v-=2500; else if(v<-1250)v+=2500; }
+  const diff=v/1000,my=Math.max(0,Math.min(10,Math.round((10+diff)/2)));return{my,op:10-my,txt:diff>0.2?'勝':diff<-0.2?'負':'和'};}
+/* 我方回合：自動落子或給建議 */
+function step(){
+  if(!B)return;
+  if(B.s.turn!==0||B.s.filled===9){B.thinking=false;renderBattle();return;}
+  if(B.s.R['混亂']&&B.forced===null){B.thinking=false;B.adv=[];renderBattle();return;}
+  B.adv=[];B.thinking=true;renderBattle();
+  const gen=++B.gen;
+  setTimeout(()=>{
+    if(!B||B.gen!==gen)return;
+    const fi=B.forced;
+    let list=[];
+    try{ list=think(fi)||[]; }catch(e){ console.error(e); }
+    if(!list.length){ try{ list=fallbackList(fi); }catch(e){ list=[]; } }
+    B.thinking=false;
+    B.adv=list.slice(0,5);
+    try{
+      if(B.auto&&!B.noAuto&&list.length){
+        const best=list[0];
+        B.hist.push(cloneS(B.s));
+        B.last={pos:best.pos,card:B.s.h[0][best.hi],e:est(best.v),auto:true};
+        B.s=play(B.s,best.hi,best.pos);
+        B.adv=[];
+      }
+    }catch(e){ console.error('auto move',e); toast('自動落子失敗，請手動選擇'); B.auto=false; }
+    B.noAuto=false;renderBattle();
+  },20);
+}
+function myPlay(hi,pos){
+  if(!B||!B.s.h[0][hi]||B.s.b[pos])return;
+  B.hist.push(cloneS(B.s));
+  const c=B.s.h[0][hi];
+  B.last={pos,card:c,e:null,auto:false};
+  B.s=play(B.s,hi,pos);B.sel=null;B.adv=[];B.forced=null;renderBattle();
+}
+function oppPlay(card,pos){
+  if(!B||B.s.filled>=9||!B.s.h[1].length||B.s.b[pos])return;
+  let i=B.s.h[1].findIndex(c=>!c.unknown&&sameCard(c,card));
+  if(i<0)i=B.s.h[1].findIndex(c=>c.unknown);
+  if(i<0)i=0;
+  B.hist.push(cloneS(B.s));
+  B.s.h[1]=B.s.h[1].slice();B.s.h[1][i]=card;
+  B.last={pos,card,e:null,auto:false};
+  B.s=play(B.s,i,pos);B.sel=null;
+  step();
+}
+function renderBattle(){
+  if(!B){$('#p-battle').innerHTML='';return;}
+  const s=B.s,[ms,os]=scoreNow(),EV=effAll(s.b,s.R),over=s.filled===9;
+  const rules=Object.keys(s.R).filter(k=>s.R[k]&&k!=='連鎖');
+  const hint={};B.adv.forEach((a,i)=>{if(hint[a.pos]===undefined)hint[a.pos]=i;});
+  const pool=poolLeft(), usePool=B.cfg.pool.length>0;
+  const oppRail = usePool
+    ? pool.map((c,i)=>cardHTML(c,'opp s tap'+(B.sel&&B.sel.side===1&&sameCard(B.sel.card,c)?' sel':''),`data-oc="${i}"`)).join('')
+    : s.h[1].map((c,i)=>cardHTML(c.unknown?null:c,'opp s tap'+(B.sel&&B.sel.side===1&&B.sel.i===i?' sel':''),`data-oh="${i}"`)).join('');
+  let statusTxt,statusCls;
+  if(over){statusCls='';statusTxt=`<b>結束 — ${ms>os?'我方獲勝 🏆':ms===os?'平手':'我方落敗'}</b>`;}
+  else if(s.turn===1){statusCls='op';statusTxt=`<b>對手回合</b><div class="sub">點對手打出的那張牌 → 再點他放的格子${B.auto?'，接著我會自動幫你落子':''}</div>`;}
+  else if(s.R['混亂']&&B.forced===null){statusCls='me';
+    statusTxt=`<b>我方回合 · 混亂</b><div class="sub">點下面系統指定給你的那一張，我立刻算最佳位置</div>`;}
+  else {statusCls='me';statusTxt=`<b>我方回合</b><div class="sub">${B.thinking?'推算中…':'點下方建議、或點格子直接放上最佳的一張'}</div>`;}
+  if(B.editMine)statusTxt=`<b>編輯手牌中</b><div class="sub">點我方任一張牌改成新數值（交換規則用），改完再按一次「編輯手牌」關閉</div>`;
+  else if(B.last&&B.last.auto&&!over&&s.turn===1)
+    statusTxt=`<b>已自動落子：${esc(B.last.card.n||'自訂')} → 第 ${B.last.pos+1} 格</b><div class="sub">預估終局 ${B.last.e.my}：${B.last.e.op}（${B.last.e.txt}） · 換對手，點他出的牌再點格子</div>`;
+
+  $('#p-battle').innerHTML=`
+  <div class="blk" style="padding:12px">
+    <div class="row" style="gap:8px">
+      <button class="btn sm" id="bk">← 返回</button>
+      <b class="disp" style="font-size:15px">${esc(B.cfg.title)}</b>
+      ${rules.map(r=>`<span class="tag g">${r}</span>`).join('')}
+      <span class="score"><span class="a">${ms}</span><span class="dim">:</span><span class="b">${os}</span></span>
+    </div>
+    <div class="bar10"><i style="width:${ms*10}%"></i></div>
+    <div class="row" style="margin-top:10px;gap:8px">
+      <span class="fld">先手</span>
+      <div class="seg" id="fsw"><button data-f="0" class="${B.cfg.first===0?'on':''}">我先</button><button data-f="1" class="${B.cfg.first===1?'on':''}">對手先</button></div>
+      <button class="btn sm" id="rst">重新開始</button>
+      <button class="btn sm" id="und" ${B.hist.length?'':'disabled'}>悔棋</button>
+      <button class="btn sm ${B.auto?'on':''}" id="atg">${B.auto?'✓ ':''}自動落子</button>
+      <button class="btn sm" id="recalc" ${s.turn===0&&!over?'':'disabled'}>重新計算</button>
+      <button class="btn sm ${B.editMine?'on':''}" id="edm">${B.editMine?'✓ ':''}編輯手牌</button>
+    </div>
+    <div class="status ${statusCls}">${statusTxt}</div>
+
+    <div class="dim" style="font-size:11px;margin-bottom:4px">對手${usePool?`可能的牌（剩 ${pool.length} 張候選，手牌 ${s.h[1].length} 張）`:`手牌（${s.h[1].length} 張）`}</div>
+    <div class="rail scroll" id="orail">${oppRail||'<span class="hint">（對手已出完）</span>'}</div>
+
+    <div class="stage" style="margin-top:12px">
+      <div class="board" id="board">
+        ${s.b.map((x,i)=>x?`<div class="cell ${B.last&&B.last.pos===i?'justplaced':''}">${cardHTML(x.c,x.o===0?'mine':'opp','',EV[i])}</div>`
+          :`<div class="cell free ${(B.sel||B.adv.length||s.turn===1)?'arm':''} ${hint[i]!==undefined&&hint[i]<3?'hint'+(hint[i]+1):''}" data-c="${i}">
+              <span class="n">${i+1}</span>${hint[i]!==undefined&&hint[i]<3?`<span class="badge">#${hint[i]+1}</span>`:''}</div>`).join('')}
+      </div>
+      <div>
+        <div class="dim" style="font-size:11px;margin-bottom:4px">我的手牌（${s.h[0].length} 張）</div>
+        <div class="rail" id="mrail">${s.h[0].map((c,i)=>cardHTML(c,'mine s tap'+(B.sel&&B.sel.side===0&&B.sel.i===i?' sel':''),`data-mh="${i}"`)).join('')||'<span class="hint">（已出完）</span>'}</div>
+        <div id="advbox" style="margin-top:10px"></div>
+      </div>
+    </div>
+  </div>`;
+  drawAdv();
+  $('#bk').onclick=()=>showTab(B.cfg.back||'play');
+  $('#rst').onclick=()=>startBattle(B.cfg);
+  $('#edm').onclick=()=>{B.editMine=!B.editMine;B.sel=null;renderBattle();};
+  $('#recalc').onclick=()=>{B.noAuto=!B.auto;B.sel=null;step();};
+  $('#atg').onclick=()=>{B.auto=!B.auto;PLAY.auto=B.auto;if(B.auto&&B.s.turn===0&&!over)step();else renderBattle();};
+  $('#und').onclick=()=>{if(!B.hist.length)return;B.s=B.hist.pop();B.sel=null;B.last=null;B.noAuto=true;
+    if(B.s.turn===0)step();else renderBattle();};
+  $('#fsw').onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;
+    B.cfg=Object.assign({},B.cfg,{first:+b.dataset.f});startBattle(B.cfg);};
+  $('#orail').onclick=e=>{
+    const p=e.target.closest('[data-oc]');
+    if(p){const c=pool[+p.dataset.oc];B.sel={side:1,card:c};renderBattle();return;}
+    const h=e.target.closest('[data-oh]');
+    if(h){const i=+h.dataset.oh,c=s.h[1][i];
+      if(c.unknown||s.turn!==1){openPicker('對手打出的牌',x=>{if(!x)return;
+          B.s.h[1]=B.s.h[1].slice();B.s.h[1][i]=x;B.sel={side:1,card:x,i};renderBattle();},{pool:pool});return;}
+      B.sel={side:1,card:c,i};renderBattle();}
+  };
+  $('#mrail').onclick=e=>{const d=e.target.closest('[data-mh]');if(!d)return;
+    const i=+d.dataset.mh;
+    if(B.editMine){
+      openPicker('把我的第 '+(i+1)+' 張換成…',c=>{if(!c)return;
+        B.s.h[0]=B.s.h[0].slice();B.s.h[0][i]=c;B.adv=[];B.forced=null;
+        if(B.s.turn===0&&!B.s.R['混亂'])step();else renderBattle();},{saveToLib:true});
+      return;}
+    if(s.turn!==0){toast('現在是對手回合（要改牌請按「編輯手牌」）');return;}
+    if(s.R['混亂']){
+      B.forced=i;B.sel={side:0,i};
+      const list=think(i);B.adv=list.slice(0,5);
+      if(B.auto&&list.length){myPlay(list[0].hi,list[0].pos);return;}
+      renderBattle();return;}
+    B.sel=(B.sel&&B.sel.side===0&&B.sel.i===i)?null:{side:0,i};
+    if(B.sel){B.adv=think(i).slice(0,5);}else{B.adv=[];}
+    renderBattle();};
+  $('#board').onclick=e=>{const d=e.target.closest('[data-c]');if(!d)return;
+    const pos=+d.dataset.c;
+    if(!B.sel){
+      if(s.turn===1){
+        if(!s.h[1].length){toast('對手已經沒有手牌了');return;}
+        openPicker('對手放在第 '+(pos+1)+' 格的牌',c=>{if(c)oppPlay(c,pos);},{pool:pool});
+      }else{
+        const a=B.adv.find(x=>x.pos===pos);
+        if(a)myPlay(a.hi,a.pos); else toast('先點一張手牌');
+      }
+      return;
+    }
+    if(B.sel.side===1){oppPlay(B.sel.card,pos);}else{myPlay(B.sel.i,pos);}
+  };
+}
+function drawAdv(){
+  const box=$('#advbox');if(!box)return;
+  if(!B.adv.length){box.innerHTML=B.s.turn===0&&B.s.filled<9?'<p class="hint">推算中…</p>':'';return;}
+  box.innerHTML=`<div class="dim" style="font-size:11px">最佳落點（點一下直接下）</div>
+   <ul class="advs">${B.adv.map((a,i)=>{const e=est(a.v);
+     return `<li data-a="${i}"><span class="k">#${i+1}</span><span><b>${esc(a.card.n||'自訂')}</b> → 第 ${a.pos+1} 格</span>
+       <span class="e">${e.my}:${e.op}<span class="dim" style="font-size:11px;font-family:'Noto Sans TC'"> ${e.txt}</span></span></li>`;}).join('')}</ul>`;
+  box.onclick=ev=>{const d=ev.target.closest('[data-a]');if(!d)return;const a=B.adv[+d.dataset.a];myPlay(a.hi,a.pos);};
+}
+
+/* ===================== 排組 ===================== */
+function renderDecks(){
+  $('#p-decks').innerHTML=`<div class="blk"><h3>我的排組（最多 4 組）</h3>
+    <p class="hint" style="margin-top:0">點格子挑卡或手動輸入。數值順序：上／下／左／右，A 填 10。</p>
+    <div class="grid3" style="margin-top:10px">${DECKS.map((d,D)=>{
+      const cs=(d&&d.cards)||[null,null,null,null,null];
+      return `<div class="dk ${cs.filter(Boolean).length===5?'on':''}">
+        <h4><input type="text" class="dn" data-d="${D}" value="${esc(d?d.name:'排組 '+(D+1))}">
+          <button class="btn sm" data-clr="${D}">清空</button></h4>
+        <div class="row" style="gap:4px">${[0,1,2,3,4].map(k=>`<span data-s="${D}:${k}" style="cursor:pointer">${miniHTML(cs[k])}</span>`).join('')}</div>
+        <p class="hint">${cs.filter(Boolean).length}/5</p></div>`;}).join('')}</div></div>`;
+  $('#p-decks').onclick=async e=>{
+    const s=e.target.closest('[data-s]');
+    if(s){const [D,k]=s.dataset.s.split(':').map(Number);
+      openPicker('第 '+(k+1)+' 張',async c=>{DECKS[D]=DECKS[D]||{name:'排組 '+(D+1),cards:[null,null,null,null,null]};
+        DECKS[D].cards[k]=c;await saveDecks();renderDecks();},{allowClear:true,saveToLib:true});return;}
+    const c=e.target.closest('[data-clr]');
+    if(c){DECKS[+c.dataset.clr]=null;await saveDecks();renderDecks();}
+  };
+  $('#p-decks').onchange=async e=>{if(!e.target.classList.contains('dn'))return;
+    const i=+e.target.dataset.d;DECKS[i]=DECKS[i]||{name:'',cards:[null,null,null,null,null]};
+    DECKS[i].name=e.target.value||('排組 '+(i+1));await saveDecks();};
+}
+
+/* ===================== 自訂 NPC ===================== */
+let NE=null;
+function newNE(){return{id:Date.now(),n:'',loc:'',area:'自訂',ver:'自訂',rules:[],rw:[],pool:[],custom:true};}
+function renderNPCs(){
+  $('#p-npcs').innerHTML=`
+  <div class="blk"><h3>自訂 NPC</h3>
+    <p class="hint" style="margin-top:0">內建 ${NPCS.length} 名 NPC。這裡可以自己新增沒收錄的對手：填名稱、規則，再把他的卡一張張加進卡池（可直接手填數值）。</p>
+    <div class="row" style="margin-top:8px"><button class="btn" id="neNew">＋ 新增 NPC</button></div>
+    ${MYNPC.length?`<div class="nplist" style="margin-top:10px">${MYNPC.map(n=>`<div class="nprow">
+      <div><div class="l1">${esc(n.n||'（未命名）')}</div><div class="l2">${esc(n.area||'')} · 卡池 ${n.pool.length} 張</div></div>
+      <div class="rt">${n.rules.map(r=>`<span class="tag g">${r}</span>`).join('')}
+        <button class="btn sm" data-ed="${n.id}">編輯</button><button class="btn sm" data-del="${n.id}">刪除</button></div></div>`).join('')}</div>`:''}
+  </div>
+  ${NE?`<div class="blk"><h3>${NE.pool.length||NE.n?'編輯':'新增'} NPC</h3>
+    <div class="row"><label class="fld grow">名稱<input type="text" id="neN" value="${esc(NE.n)}" placeholder="例：某某 NPC"></label>
+      <label class="fld grow">地點／地區<input type="text" id="neA" value="${esc(NE.area)}" placeholder="例：黑衣森林"></label></div>
+    <div class="dim" style="font-size:12px;margin:10px 0 4px">規則</div>
+    <div class="rules" id="neR">${RULE_DEFS.map(([r,d])=>`<label class="${NE.rules.includes(r)?'on':''}"><input type="checkbox" value="${r}" ${NE.rules.includes(r)?'checked':''}><span>${r}<small>${d}</small></span></label>`).join('')}</div>
+    <div class="dim" style="font-size:12px;margin:12px 0 4px">卡池（放幾張都行；剛好 5 張＝完整手牌）</div>
+    <div class="rail" id="neP">${NE.pool.map((c,i)=>cardHTML(c,'opp s tap',`data-pc="${i}"`)).join('')}${NE.pool.length<10?cardHTML(null,'s tap','data-padd="1"'):''}</div>
+    <div class="row" style="margin-top:12px"><button class="btn go" id="neSave">儲存</button><button class="btn" id="neX">取消</button></div>
+  </div>`:''}`;
+  $('#neNew').onclick=()=>{NE=newNE();renderNPCs();};
+  $('#p-npcs').querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>{NE=JSON.parse(JSON.stringify(MYNPC.find(n=>n.id==b.dataset.ed)));renderNPCs();});
+  $('#p-npcs').querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!confirm('刪除這個 NPC？'))return;
+    MYNPC=MYNPC.filter(n=>n.id!=b.dataset.del);await saveNPC();renderNPCs();renderPlay();});
+  if(!NE)return;
+  $('#neR').onchange=e=>{const r=e.target.value;
+    NE.rules=e.target.checked?[...new Set([...NE.rules,r])]:NE.rules.filter(x=>x!==r);
+    e.target.closest('label').classList.toggle('on',e.target.checked);};
+  $('#neP').onclick=e=>{
+    const a=e.target.closest('[data-padd]');
+    if(a){openPicker('加入卡池',c=>{if(!c)return;NE.n=$('#neN').value;NE.area=$('#neA').value;NE.pool.push(c);renderNPCs();},{saveToLib:true});return;}
+    const p=e.target.closest('[data-pc]');
+    if(p){NE.n=$('#neN').value;NE.area=$('#neA').value;NE.pool.splice(+p.dataset.pc,1);renderNPCs();}
+  };
+  $('#neX').onclick=()=>{NE=null;renderNPCs();};
+  $('#neSave').onclick=async()=>{
+    NE.n=$('#neN').value.trim()||'自訂 NPC';NE.area=$('#neA').value.trim()||'自訂';NE.loc=NE.area;NE.ver='自訂';
+    if(!NE.pool.length){toast('卡池至少放一張');return;}
+    const i=MYNPC.findIndex(n=>n.id===NE.id);
+    if(i>=0)MYNPC[i]=NE;else MYNPC.push(NE);
+    await saveNPC();NE=null;renderNPCs();renderPlay();toast('已儲存');
+  };
+}
+
+/* ===================== 卡牌庫 / 說明 ===================== */
+function renderLib(){
+  $('#p-lib').innerHTML=`<div class="blk"><h3>卡牌庫</h3>
+    <div class="row"><input type="text" id="lq" class="grow" placeholder="搜尋卡名／編號"><button class="btn" id="lAdd">＋ 新增自訂卡</button></div>
+    <p class="hint">內建 ${BASE_CARDS.length} 張。自訂卡點一下可刪除。</p>
+    <div class="pickgrid" id="lg" style="max-height:62vh;margin-top:10px"></div></div>`;
+  const draw=()=>{const q=$('#lq').value.trim();
+    $('#lg').innerHTML=DB.filter(c=>!q||c.n.includes(q)||String(c.id).includes(q))
+      .map(c=>cardHTML(c,'s'+(c.src==='custom'?' tap':''),c.src==='custom'?`data-del="${c.id}"`:'')).join('');};
+  draw();$('#lq').oninput=draw;
+  $('#lAdd').onclick=()=>openPicker('新增自訂卡',async c=>{if(!c)return;c.id=Math.max(900,...DB.map(x=>x.id||0))+1;c.src='custom';DB.push(c);await saveCustom();renderLib();toast('已新增');});
+  $('#lg').onclick=async e=>{const d=e.target.closest('[data-del]');if(!d)return;
+    if(confirm('刪除這張自訂卡？')){DB=DB.filter(c=>c.id!==+d.dataset.del);await saveCustom();renderLib();}};
+}
+function renderHelp(){
+  $('#p-help').innerHTML=`
+  <div class="blk"><h3>最快的用法</h3>
+   <ol style="padding-left:18px;line-height:1.95">
+     <li>「排組」建好一組五張。</li>
+     <li>「對戰」選 NPC（或自訂對手）→ 選先手 → 開始。</li>
+     <li>我先手時會<b>自動幫你落子</b>；換對手時，點他打出的那張牌，再點他放的格子，接著我會立刻算完並自動放上我方最佳的一張。</li>
+     <li>想自己決定就關掉「自動落子」，改點建議清單（點一下就下）。先手／後手也能在對戰畫面直接切換重開。</li>
+   </ol>
+   <p class="hint">所有數值都用點的：填卡片時直接點 1～A 的按鈕，不用打字。</p></div>
+  <div class="blk"><h3>兩個好用的開關</h3>
+   <p class="hint" style="margin-top:0"><b>試算哪組排組贏面最大</b>：選好 NPC 後按一下，會用你已存的每組排組跟他實戰模擬（先手／後手各跑幾局），列出勝率與平均卡差並自動選中最好的一組。</p>
+   <p class="hint"><b>對手牌力</b>（自訂對戰）：對手沒公開的牌，不再當成一張平庸的 7／7／7／7，而是從你指定等級的<b>真實卡片</b>裡反覆抽樣後取平均，等於把「他可能有 A、可能有 9」算進去。實測在同樣的計算時間下，平均卡差從 +0.8 提升到 +1.5，敗場也明顯減少。選錯等級也還是比舊做法好，抓不準就選「高階 ★3–5」。</p>
+   <p class="hint"><b>目標</b>：「求勝」會優先確保贏（NPC 預設）；「搶最多卡」不管輸贏、一律把翻到的卡數差最大化，適合幻卡大賽計分（自訂對戰預設）。</p></div>
+  <div class="blk"><h3>推算方式</h3>
+   <p class="hint" style="margin-top:0">alpha-beta 完全搜尋，會把<b>對手手上還沒出的牌</b>一起算進去：NPC 卡池剛好 5 張時等於完全已知；超過 5 張時會從剩餘候選取樣多次平均。時間不夠時採漸進加深，先給出淺層答案再自動加深，通常 1～2 秒內完成，接近終局會直接算到底。</p>
+   <p class="hint">支援：同數、加算、同數壁、連鎖、逆轉、王牌殺手、同類強化／弱化、秩序。不勝不休／交換／天選／隨機不影響單局推算，實際抽到的規則請自行勾選。</p></div>
+  <div class="blk"><h3>資料</h3>
+   <ul style="padding-left:18px" class="hint">
+     <li>卡片與 NPC 卡池整理自灰機 wiki「九宮幻卡獲取方式」，內建 ${NPCS.length} 名 NPC、${BASE_CARDS.length} 張卡。</li>
+     <li>網頁不能跨網域即時抓 wiki（CORS），所以資料是預先內建的；沒收錄的對手請用「NPC」分頁自行新增，卡片可直接手填數值。</li>
+     <li>數值順序一律 上／下／左／右，10 顯示成 A。資料存在這台裝置的瀏覽器裡。</li>
+   </ul></div>`;
+}
+
+/* ===================== 啟動 ===================== */
+function showTab(t){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  $('#p-'+t).classList.add('on');
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  try{window.scrollTo(0,0);}catch(e){}
+}
+$('#tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  const t=b.dataset.t;
+  if(t==='play')renderPlay(); if(t==='decks')renderDecks(); if(t==='npcs')renderNPCs(); if(t==='lib')renderLib();
+  showTab(t);};
+(async function boot(){
+  const cc=await Store.get('tt_custom_cards'); if(Array.isArray(cc)&&cc.length)DB=BASE_CARDS.concat(cc);
+  const dk=await Store.get('tt_decks'); if(Array.isArray(dk)&&dk.length===4)DECKS=dk;
+  const np=await Store.get('tt_npcs'); if(Array.isArray(np))MYNPC=np;
+  renderPlay();renderDecks();renderNPCs();renderLib();renderHelp();
+})();
+
+</script>
+</body>
+</html>
