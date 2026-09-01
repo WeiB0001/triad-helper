@@ -709,6 +709,61 @@ function cardHTML(c,cls='',attr='',ev=null){
 }
 const miniHTML=c=>c?`<div class="mini f" title="${esc(c.n||'')}"><span class="u">${A(c.v[0])}</span><span class="d">${A(c.v[1])}</span><span class="l">${A(c.v[2])}</span><span class="r">${A(c.v[3])}</span></div>`:`<div class="mini"></div>`;
 
+/* ---------- 截圖辨識 ---------- */
+const FI=document.createElement('input');
+FI.type='file';FI.accept='image/*';FI.style.display='none';document.body.appendChild(FI);
+let fileCB=null;
+FI.onchange=async()=>{const f=FI.files&&FI.files[0];FI.value='';if(f&&fileCB)await fileCB(f);};
+function pickImage(cb){fileCB=cb;FI.click();}
+function shrink(file,max){return new Promise((res,rej)=>{
+  const img=new Image(),url=URL.createObjectURL(file);
+  img.onload=()=>{const s=Math.min(1,(max||1280)/Math.max(img.width,img.height));
+    const c=document.createElement('canvas');
+    c.width=Math.max(1,Math.round(img.width*s));c.height=Math.max(1,Math.round(img.height*s));
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',0.85).split(',')[1]);};
+  img.onerror=e=>{URL.revokeObjectURL(url);rej(new Error('圖片讀取失敗'));};
+  img.src=url;});}
+const OCR_PROMPT=n=>`這是《FF14》九宮幻卡的遊戲截圖。每張卡左上角有菱形排列的四個數字：最上=上、最下=下、左邊=左、右邊=右，A 代表 10。
+請由左到右（多列則由上到下）讀出最多 ${n} 張卡。
+只輸出 JSON 陣列，不要任何說明文字或 markdown：
+[{"n":"卡名(讀得到才填,否則空字串)","u":上,"d":下,"l":左,"r":右}]`;
+function normCard(o){
+  const num=x=>{if(typeof x==='string'){const t=x.trim().toUpperCase();if(t==='A')return 10;const p=parseInt(t);return isNaN(p)?1:p;}
+    const p=parseInt(x);return isNaN(p)?1:p;};
+  const v=[num(o.u),num(o.d),num(o.l),num(o.r)].map(x=>Math.max(1,Math.min(10,x)));
+  const key=v.join();
+  const nm=(o.n||'').trim();
+  let named=nm?DB.find(c=>c.n===nm)||DB.find(c=>c.n.includes(nm)||nm.includes(c.n)):null;
+  if(named&&named.v.join()===key)return named;
+  const same=DB.filter(c=>c.v.join()===key);
+  if(same.length===1)return same[0];
+  return {id:null,n:nm||'截圖卡',v,t:named?named.t:0,s:named?named.s:0,src:'ocr'};
+}
+async function ocrCards(file,count){
+  const data=await shrink(file,1280);
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:600,messages:[{role:'user',content:[
+      {type:'image',source:{type:'base64',media_type:'image/jpeg',data}},
+      {type:'text',text:OCR_PROMPT(count)}]}]})});
+  if(!r.ok)throw new Error('辨識服務回應 '+r.status);
+  const j=await r.json();
+  const txt=(j.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('');
+  const m=txt.replace(/```json|```/g,'').trim().match(/\[[\s\S]*\]/);
+  if(!m)throw new Error('看不懂辨識結果');
+  return JSON.parse(m[0]).slice(0,count).map(normCard);
+}
+/* 通用：按鈕 → 選圖 → 辨識 → 回傳卡片陣列 */
+function ocrInto(btn,count,done){
+  pickImage(async f=>{
+    const old=btn.textContent;btn.disabled=true;btn.textContent='辨識中…';
+    try{ const cards=await ocrCards(f,count); done(cards); toast('已讀入 '+cards.length+' 張'); }
+    catch(e){ console.error(e); toast('截圖辨識失敗：'+e.message); }
+    finally{ btn.disabled=false;btn.textContent=old; }
+  });
+}
+
 /* ---------- 挑卡視窗 ---------- */
 let pickCB=null;
 function openPicker(title,cb,opts={}){
@@ -817,6 +872,7 @@ function renderPlay(){
     ${manual?`
       <div class="rail" id="fmy">${PLAY.freeMy.map((c,i)=>cardHTML(c,'mine tap',`data-my="${i}"`)).join('')}</div>
       <p class="hint">點格子填入這場比賽拿到的五張牌（大賽的隨機／抽選牌組就用這個）。
+        <button class="btn sm" id="ocrMy" style="margin-left:6px">📷 上傳截圖自動填入</button>
         <button class="btn sm" id="saveMy" style="margin-left:6px">存成排組</button></p>`
      :(ready.length?`<div class="row" id="deckpick">${ready.map(x=>`<button class="btn ${PLAY.deck===x.i?'on':''}" data-d="${x.i}">${esc(x.d.name)}</button>`).join('')}</div>
       <div class="rail" style="margin-top:10px">${(DECKS[PLAY.deck]||ready[0].d).cards.map(c=>cardHTML(c,'mine s')).join('')}</div>`
@@ -858,6 +914,8 @@ function renderPlay(){
   if($('#msrc'))$('#msrc').onclick=e=>{const b=e.target.closest('[data-s]');if(!b)return;PLAY.mySrc=b.dataset.s;renderPlay();};
   if($('#fmy'))$('#fmy').onclick=e=>{const b=e.target.closest('[data-my]');if(!b)return;
     openPicker('我的第 '+(+b.dataset.my+1)+' 張',c=>{PLAY.freeMy[+b.dataset.my]=c;renderPlay();},{allowClear:true,saveToLib:true});};
+  if($('#ocrMy'))$('#ocrMy').onclick=()=>ocrInto($('#ocrMy'),5,cards=>{
+    for(let i=0;i<5;i++)PLAY.freeMy[i]=cards[i]||null; renderPlay();});
   if($('#saveMy'))$('#saveMy').onclick=async()=>{
     if(PLAY.freeMy.filter(Boolean).length!==5){toast('五張都填滿才能存');return;}
     let k=DECKS.findIndex(d=>!d); if(k<0)k=3;
@@ -1143,6 +1201,7 @@ function renderBattle(){
       <button class="btn sm ${B.auto?'on':''}" id="atg">${B.auto?'✓ ':''}自動落子</button>
       <button class="btn sm" id="recalc" ${s.turn===0&&!over?'':'disabled'}>重新計算</button>
       <button class="btn sm ${B.editMine?'on':''}" id="edm">${B.editMine?'✓ ':''}編輯手牌</button>
+      <button class="btn sm" id="ocrOpp" ${s.h[1].length?'':'disabled'}>📷 讀對手手牌</button>
     </div>
     <div class="status ${statusCls}">${statusTxt}</div>
 
@@ -1165,6 +1224,9 @@ function renderBattle(){
   drawAdv();
   $('#bk').onclick=()=>showTab(B.cfg.back||'play');
   $('#rst').onclick=()=>startBattle(B.cfg);
+  $('#ocrOpp').onclick=()=>ocrInto($('#ocrOpp'),B.s.h[1].length,cards=>{
+    B.s.h[1]=B.s.h[1].map((c,i)=>cards[i]||c);
+    B.adv=[];if(B.s.turn===0&&!B.s.R['混亂'])step();else renderBattle();});
   $('#edm').onclick=()=>{B.editMine=!B.editMine;B.sel=null;renderBattle();};
   $('#recalc').onclick=()=>{B.noAuto=!B.auto;B.sel=null;step();};
   $('#atg').onclick=()=>{B.auto=!B.auto;PLAY.auto=B.auto;if(B.auto&&B.s.turn===0&&!over)step();else renderBattle();};
@@ -1230,6 +1292,7 @@ function renderDecks(){
       const cs=(d&&d.cards)||[null,null,null,null,null];
       return `<div class="dk ${cs.filter(Boolean).length===5?'on':''}">
         <h4><input type="text" class="dn" data-d="${D}" value="${esc(d?d.name:'排組 '+(D+1))}">
+          <button class="btn sm" data-ocr="${D}" title="上傳排組截圖自動填入">📷</button>
           <button class="btn sm" data-clr="${D}">清空</button></h4>
         <div class="row" style="gap:4px">${[0,1,2,3,4].map(k=>`<span data-s="${D}:${k}" style="cursor:pointer">${miniHTML(cs[k])}</span>`).join('')}</div>
         <p class="hint">${cs.filter(Boolean).length}/5</p></div>`;}).join('')}</div></div>`;
@@ -1239,7 +1302,13 @@ function renderDecks(){
       openPicker('第 '+(k+1)+' 張',async c=>{DECKS[D]=DECKS[D]||{name:'排組 '+(D+1),cards:[null,null,null,null,null]};
         DECKS[D].cards[k]=c;await saveDecks();renderDecks();},{allowClear:true,saveToLib:true});return;}
     const c=e.target.closest('[data-clr]');
-    if(c){DECKS[+c.dataset.clr]=null;await saveDecks();renderDecks();}
+    if(c){DECKS[+c.dataset.clr]=null;await saveDecks();renderDecks();return;}
+    const o=e.target.closest('[data-ocr]');
+    if(o){const D=+o.dataset.ocr;
+      ocrInto(o,5,async cards=>{
+        DECKS[D]=DECKS[D]||{name:'排組 '+(D+1),cards:[null,null,null,null,null]};
+        for(let i=0;i<5;i++)DECKS[D].cards[i]=cards[i]||null;
+        await saveDecks();renderDecks();renderPlay();});}
   };
   $('#p-decks').onchange=async e=>{if(!e.target.classList.contains('dn'))return;
     const i=+e.target.dataset.d;DECKS[i]=DECKS[i]||{name:'',cards:[null,null,null,null,null]};
@@ -1315,7 +1384,8 @@ function renderHelp(){
      <li>我先手時會<b>自動幫你落子</b>；換對手時，點他打出的那張牌，再點他放的格子，接著我會立刻算完並自動放上我方最佳的一張。</li>
      <li>想自己決定就關掉「自動落子」，改點建議清單（點一下就下）。先手／後手也能在對戰畫面直接切換重開。</li>
    </ol>
-   <p class="hint">所有數值都用點的：填卡片時直接點 1～A 的按鈕，不用打字。</p></div>
+   <p class="hint">所有數值都用點的：填卡片時直接點 1～A 的按鈕，不用打字。</p>
+   <p class="hint"><b>截圖匯入</b>：排組頁每組旁邊的 📷、自訂對戰手動排組的「上傳截圖自動填入」、以及對戰中的「讀對手手牌」，都可以直接丟遊戲截圖進去自動讀出四面數值（圖片會先壓到 1280px 再送出以加快速度；讀到的數值若與內建卡牌吻合會自動補上卡名與類型）。此功能需要連線，離線開啟檔案時請改用手動輸入。</p></div>
   <div class="blk"><h3>兩個好用的開關</h3>
    <p class="hint" style="margin-top:0"><b>試算哪組排組贏面最大</b>：選好 NPC 後按一下，會用你已存的每組排組跟他實戰模擬（先手／後手各跑幾局），列出勝率與平均卡差並自動選中最好的一組。</p>
    <p class="hint"><b>對手牌力</b>（自訂對戰）：對手沒公開的牌，不再當成一張平庸的 7／7／7／7，而是從你指定等級的<b>真實卡片</b>裡反覆抽樣後取平均，等於把「他可能有 A、可能有 9」算進去。實測在同樣的計算時間下，平均卡差從 +0.8 提升到 +1.5，敗場也明顯減少。選錯等級也還是比舊做法好，抓不準就選「高階 ★3–5」。</p>
