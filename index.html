@@ -828,6 +828,10 @@ function renderPlay(){
         <span class="k">#${i+1}</span><b>${esc(r.name)}</b>
         <span class="dim" style="font-size:12px">${r.win}勝 ${r.draw}和 ${r.lose}負 · 平均卡差 ${r.avg>0?'+':''}${r.avg.toFixed(1)}</span>
         <span class="p">${Math.round(r.win/r.n*100)}%</span></li>`).join('')}</ul>`:''}`:''}
+    <div class="row" style="margin-top:10px">
+      <button class="btn sm" id="ordBtn">⇄ 依「秩序」規則重排出牌順序</button>
+      <span class="dim" style="font-size:12px">${esc(PLAY.ordMsg||'秩序規則下只能由左往右出牌，這會試完 120 種順序挑最佳的')}</span>
+    </div>
     <hr class="sep">
     <div class="row">
       <span class="fld">目標</span>
@@ -862,6 +866,7 @@ function renderPlay(){
   if($('#goDeck'))$('#goDeck').onclick=()=>showTab('decks');
   $('#goal').onclick=e=>{const b=e.target.closest('[data-g]');if(!b)return;PLAY.goal=b.dataset.g;PLAY.rank=null;renderPlay();};
   if($('#rankBtn'))$('#rankBtn').onclick=()=>rankDecks();
+  if($('#ordBtn'))$('#ordBtn').onclick=()=>orderOptimize();
   if($('#p-play').querySelector('.rank'))$('#p-play').querySelector('.rank').onclick=e=>{
     const li=e.target.closest('[data-r]');if(!li)return;PLAY.deck=+li.dataset.r;renderPlay();};
   $('#first').onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;PLAY.first=+b.dataset.f;renderPlay();};
@@ -925,6 +930,69 @@ async function rankDecks(){
   out.sort((a,b)=>(b.win/b.n-a.win/a.n)||(b.avg-a.avg));
   PLAY.rank=out; PLAY.busy=''; PLAY.deck=out[0].i; renderPlay();
   toast('建議使用：'+out[0].name);
+}
+
+/* 秩序規則：把五張牌重排成最佳出牌順序 */
+function permute5(){
+  const out=[];
+  const rec=(cur,rest)=>{ if(!rest.length){out.push(cur.slice());return;}
+    for(let i=0;i<rest.length;i++){cur.push(rest[i]);rec(cur,rest.filter((_,j)=>j!==i));cur.pop();} };
+  rec([],[0,1,2,3,4]); return out;
+}
+function battleRules(force){
+  const R=Object.assign({},force||{});R['連鎖']=true;
+  if(PLAY.mode==='npc'){
+    const cur=allNPC().find(n=>n.key===PLAY.key);
+    if(cur)cur.rules.forEach(r=>R[r]=true);
+    const ex=$('#extra'); if(ex)ex.querySelectorAll('input:checked').forEach(i=>R[i.value]=true);
+  }else{
+    Object.assign(R,PLAY.freeRules);R['連鎖']=PLAY.freeRules['連鎖']!==false;
+  }
+  return R;
+}
+async function orderOptimize(){
+  const manual = PLAY.mode==='free' && PLAY.mySrc==='manual';
+  const src = manual? PLAY.freeMy : (DECKS[PLAY.deck]&&DECKS[PLAY.deck].cards);
+  if(!src||src.filter(Boolean).length!==5){toast('請先備好五張牌');return;}
+  const cards=src.slice();
+  const R=battleRules({'秩序':true}); R['秩序']=true;
+  let pool=[],g;
+  if(PLAY.mode==='npc'){const cur=allNPC().find(n=>n.key===PLAY.key); pool=cur?npcPool(cur):[]; g={unknown:true,n:'未知',v:[7,7,7,7],t:0};}
+  else {pool=PLAY.freeOpp.filter(Boolean); const x=PLAY.ghost; g={unknown:true,n:'未知',v:[x,x,x,x],t:0};}
+  WINB = PLAY.goal==='win';
+  const S = pool.length>5?2:1;
+  const btn=$('#ordBtn'); if(btn)btn.disabled=true;
+  const say=t=>{PLAY.ordMsg=t;const b=$('#ordBtn');if(b&&b.nextElementSibling)b.nextElementSibling.textContent=t;};
+  const hands=[];
+  for(let first=0;first<2;first++)for(let k=0;k<S;k++){
+    const oh=(pool.length?shuffled(pool,k+first*13):[]).slice(0,5);
+    while(oh.length<5)oh.push(Object.assign({},g));
+    hands.push({first,oh});
+  }
+  const score=async(list,depth,label)=>{
+    const out=[];let i=0;
+    for(const p of list){
+      const my=p.map(x=>cards[x]);let acc=0;
+      for(const h of hands){
+        let v=0;
+        try{const bm=bestMove({b:Array(9).fill(null),h:[my.slice(),h.oh],turn:h.first,filled:0,R},depth,400);v=bm?bm.v:0;}catch(e){}
+        acc+=v;
+      }
+      out.push({perm:p,my,avg:acc/hands.length});
+      if(++i%15===0){say(label+' '+Math.round(i/list.length*100)+'%');await tick();}
+    }
+    out.sort((a,b)=>b.avg-a.avg);return out;
+  };
+  const rough=await score(permute5(),5,'初步篩選…');
+  const fine=await score(rough.slice(0,16).map(r=>r.perm),9,'精算前 16 種…');
+  const best=fine[0];
+  if(btn)btn.disabled=false;
+  if(!best){say('計算失敗，請再試一次');return;}
+  if(manual)PLAY.freeMy=best.my;
+  else {DECKS[PLAY.deck].cards=best.my; await saveDecks(); renderDecks();}
+  const e=est(best.avg);
+  PLAY.ordMsg='已重排：'+best.my.map(c=>c.n||'自訂').join(' → ')+'（預估 '+e.my+'：'+e.op+'）';
+  renderPlay(); toast('已依秩序規則重排順序');
 }
 
 /* ===================== 對戰盤 ===================== */
